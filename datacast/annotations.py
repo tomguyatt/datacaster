@@ -1,6 +1,6 @@
 from typing import Union, Optional, _GenericAlias
 
-from . import exceptions
+from datacast import exceptions
 
 
 def parse_annotation(annotation):

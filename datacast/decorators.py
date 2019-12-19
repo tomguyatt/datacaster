@@ -1,6 +1,6 @@
 from dataclasses import _MISSING_TYPE
 
-from . import annotations, exceptions, values
+from datacast import exceptions, values, annotations
 
 
 def _check_argument_type(argument_name, argument_value, argument_annotation):
@@ -32,7 +32,7 @@ def _type_check_defaulted_values(kwarg_default_values, argument_annotations, kwa
         )
 
 
-def cast_args(data_class):
+def cast_attributes(data_class):
     argument_annotations = data_class.__annotations__
     kwarg_default_values = {
         field_name: field_data.default
