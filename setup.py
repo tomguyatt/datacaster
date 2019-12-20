@@ -1,6 +1,6 @@
 from setuptools import setup
 
-TEST_DEPENDENCIES = ["pytest==4.6.3"]
+TEST_DEPENDENCIES = ["pytest==4.6.3", "pytest-cov==2.8.1"]
 
 setup(
     name="datacaster",
