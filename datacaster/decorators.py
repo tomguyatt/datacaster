@@ -15,7 +15,7 @@ def _check_argument_type(argument_name, argument_value, argument_annotation):
     if annotations.is_custom_type(argument_annotation):
         try:
             if not values.test_value_class(
-                argument_value, annotations.get_custom_type_classes(argument_annotation)
+                    argument_value, annotations.get_custom_type_classes(argument_annotation)
             ):
                 _raise_invalid_default_value()
         except exceptions.UnsupportedType as e:
@@ -82,15 +82,13 @@ def cast_attributes(data_class):
                     # this value to None, we should try to cast it to the other type in the Union. To get
                     # the type to cast to we need to remove the NoneType entry from the valid_types tuple.
                     valid_type = next(
-                        filter(lambda x: x != type(None), [t for t in valid_types if t])
+                        filter(lambda x: x != type(None), valid_types)
                     )  # noqa (ignore E721: using isinstance is not correct here)
                     new_kwargs[argument_name] = _cast_simple(valid_type)
                 else:
                     new_kwargs[argument_name] = argument_value
             else:
                 if not values.test_value_class(argument_value, [argument_annotation]):
-                    # For simple types we don't need to pass in the supplied value, as
-                    # the functools singledispatch function will work it out for us.
                     new_kwargs[argument_name] = _cast_simple(argument_annotation)
                 else:
                     new_kwargs[argument_name] = argument_value
