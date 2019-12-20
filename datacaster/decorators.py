@@ -14,21 +14,29 @@ def _check_argument_type(argument_name, argument_value, argument_annotation):
 
     if annotations.is_custom_type(argument_annotation):
         try:
-            if not values.test_value_class(argument_value, annotations.get_custom_type_classes(argument_annotation)):
+            if not values.test_value_class(
+                argument_value, annotations.get_custom_type_classes(argument_annotation)
+            ):
                 _raise_invalid_default_value()
         except exceptions.UnsupportedType as e:
-            raise exceptions.UnsupportedType(f"Failed to type check argument '{argument_name}'. {str(e)}")
+            raise exceptions.UnsupportedType(
+                f"Failed to type check argument '{argument_name}'. {str(e)}"
+            )
     elif argument_value_type != repr(argument_annotation):
         _raise_invalid_default_value()
 
 
 def _type_check_defaulted_values(kwarg_default_values, argument_annotations, kwargs):
     # Work out which arguments will be fulfilled by their default values so we can check & cast those too.
-    defaulted_kwargs = {key: value for key, value in kwarg_default_values.items() if key not in kwargs}
+    defaulted_kwargs = {
+        key: value for key, value in kwarg_default_values.items() if key not in kwargs
+    }
 
     for argument_name, argument_value in defaulted_kwargs.items():
         _check_argument_type(
-            argument_name, argument_value, annotations.parse_annotation(argument_annotations[argument_name])
+            argument_name,
+            argument_value,
+            annotations.parse_annotation(argument_annotations[argument_name]),
         )
 
 
@@ -50,7 +58,9 @@ def cast_attributes(data_class):
         for argument_name, argument_value in kwargs.items():
             # Iterate over the supplied keyword arguments, and compare their types
             # with the expected types collected from the dataclass type annotations.
-            argument_annotation = annotations.parse_annotation(argument_annotations[argument_name])
+            argument_annotation = annotations.parse_annotation(
+                argument_annotations[argument_name]
+            )
 
             # This can be called from multiple code paths, so define it once inside
             # the scope that contains the annotation, name, and value of each argument.

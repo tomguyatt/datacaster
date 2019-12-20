@@ -37,7 +37,7 @@ def cast_to_float(value):
 ANNOTATION_CAST_FUNCTIONS = {
     repr("string".__class__): cast_to_string,
     repr((123).__class__): cast_to_int,
-    repr(123.0.__class__): cast_to_float,
+    repr(123.0 .__class__): cast_to_float,
 }
 
 
