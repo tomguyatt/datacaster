@@ -1,6 +1,6 @@
 from dataclasses import _MISSING_TYPE
 
-from datacast import exceptions, values, annotations
+from . import exceptions, values, annotations
 
 
 def _check_argument_type(argument_name, argument_value, argument_annotation):
