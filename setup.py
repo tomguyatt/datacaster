@@ -11,7 +11,7 @@ setup(
     author_email="tomguyatt@gmail.com",
     maintainer_email="tomguyatt@gmail.com",
     url="http://www.",
-    packages=["datacaster"],
+    packages=["src"],
     zip_safe=False,
     classifiers=[
         "Development Status :: 5 - production",
