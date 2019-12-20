@@ -39,8 +39,14 @@ def test_is_custom_type(value, expected_output):
         [typing.Union[typing.List, None], None, exceptions.UnsupportedType],
         [typing.List[str], None, exceptions.UnsupportedType],
     ],
-    ids=["optional_str", "union_str_none", "too_many_union_types", "union_must_be_none", "union_must_be_builtin",
-         "not_union_or_optional"],
+    ids=[
+        "optional_str",
+        "union_str_none",
+        "too_many_union_types",
+        "union_must_be_none",
+        "union_must_be_builtin",
+        "not_union_or_optional",
+    ],
 )
 def test_get_custom_type_classes(value, expected_type_classes, expected_exception):
     # This function is only called on custom types, not builtins.
@@ -49,6 +55,11 @@ def test_get_custom_type_classes(value, expected_type_classes, expected_exceptio
             annotations.get_custom_type_classes(value)
     else:
         assert (
-                tuple([repr(type_class) for type_class in annotations.get_custom_type_classes(value)])
-                == expected_type_classes
+            tuple(
+                [
+                    repr(type_class)
+                    for type_class in annotations.get_custom_type_classes(value)
+                ]
+            )
+            == expected_type_classes
         )

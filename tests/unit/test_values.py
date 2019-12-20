@@ -36,16 +36,8 @@ def test_cast_to_string(input, expected_output, expected_exception):
         [1.2, 1, None],
         [False, 0, None],
         ["123", 123, None],
-        [
-            None,
-            None,
-            exceptions.CastFailed,
-        ],
-        [
-            "hello",
-            None,
-            exceptions.CastFailed,
-        ],
+        [None, None, exceptions.CastFailed],
+        ["hello", None, exceptions.CastFailed],
     ],
     ids=["float", "bool", "valid_string", "none", "invalid_string"],
 )
