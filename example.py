@@ -1,7 +1,7 @@
 from typing import Optional
 from dataclasses import dataclass
 
-from datacast import decorators
+from datacaster import decorators
 
 
 @decorators.cast_attributes
