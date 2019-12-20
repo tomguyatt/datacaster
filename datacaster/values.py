@@ -1,5 +1,7 @@
 import functools
 
+from . import exceptions
+
 
 def _raise_on_fail(type_name):
     def _wrapper(func):
@@ -8,7 +10,9 @@ def _raise_on_fail(type_name):
             try:
                 return func(value)
             except Exception as e:
-                raise exceptions.CastFailed(f"Cannot cast value {value} of type {type(value)} to {type_name}. {str(e)}")
+                raise exceptions.CastFailed(
+                    f"Cannot cast value {repr(value)} of type {type(value)} to {type_name}. {str(e)}"
+                )
 
         return _inner
 
@@ -33,7 +37,7 @@ def cast_to_float(value):
 ANNOTATION_CAST_FUNCTIONS = {
     repr("string".__class__): cast_to_string,
     repr((123).__class__): cast_to_int,
-    repr(123.0.__class__): cast_to_float,
+    repr(123.0 .__class__): cast_to_float,
 }
 
 
