@@ -10,7 +10,7 @@ setup(
     maintainer="Tom Guyatt",
     author_email="tomguyatt@gmail.com",
     maintainer_email="tomguyatt@gmail.com",
-    url="http://www.",
+    url="https://github.com/tomguyatt/datacaster",
     packages=["datacaster"],
     zip_safe=False,
     classifiers=[
