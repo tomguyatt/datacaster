@@ -1,43 +1,33 @@
 import functools
 
 
+def _raise_on_fail(type_name):
+    def _wrapper(func):
+        @functools.wraps(func)
+        def _inner(value):
+            try:
+                return func(value)
+            except Exception as e:
+                raise exceptions.CastFailed(f"Cannot cast value {value} of type {type(value)} to {type_name}. {str(e)}")
+
+        return _inner
+
+    return _wrapper
+
+
+@_raise_on_fail("string")
 def cast_to_string(value):
-    @functools.singledispatch
-    def _cast(value):
-        raise TypeError(f"Cannot cast value {value} to string. Supplied data type {type(value)} is unsupported.")
-
-    @_cast.register(int)
-    @_cast.register(float)
-    def _(value):
-        return str(value)
-
-    return _cast(value)
+    return str(value)
 
 
+@_raise_on_fail("integer")
 def cast_to_int(value):
-    @functools.singledispatch
-    def _cast(value):
-        raise TypeError(f"Cannot cast value {value} to int. Supplied data type {type(value)} is unsupported.")
-
-    @_cast.register(str)
-    @_cast.register(float)
-    def _(value):
-        return int(value)
-
-    return _cast(value)
+    return int(value)
 
 
+@_raise_on_fail("float")
 def cast_to_float(value):
-    @functools.singledispatch
-    def _cast(value):
-        raise TypeError(f"Cannot cast value {value} to float. Supplied data type {type(value)} is unsupported.")
-
-    @_cast.register(str)
-    @_cast.register(int)
-    def _(value):
-        return float(value)
-
-    return _cast(value)
+    return float(value)
 
 
 ANNOTATION_CAST_FUNCTIONS = {

@@ -4,3 +4,7 @@ class InvalidDefaultValue(TypeError):
 
 class UnsupportedType(ValueError):
     pass
+
+
+class CastFailed(ValueError):
+    pass
