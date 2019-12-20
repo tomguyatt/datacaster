@@ -3,7 +3,7 @@ from setuptools import setup
 TEST_DEPENDENCIES = ["pytest==4.6.3"]
 
 setup(
-    name="datacaster",
+    name="pydatacaster",
     description="Cast dataclass attributes on object instantiation.",
     version="0.1.0",
     author="Tom Guyatt",
@@ -11,7 +11,7 @@ setup(
     author_email="tomguyatt@gmail.com",
     maintainer_email="tomguyatt@gmail.com",
     url="http://www.",
-    packages=["src"],
+    packages=["datacaster"],
     zip_safe=False,
     classifiers=[
         "Development Status :: 5 - production",
