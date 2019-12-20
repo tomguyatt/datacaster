@@ -22,6 +22,12 @@ class UnsupportedCastRequired:
     bytes: bytes
 
 
+@decorators.cast_attributes
+@dataclass(frozen=True)
+class InvalidDefaultValue:
+    integer: Optional[int] = "lol"
+
+
 def test_cast_attributes_simple():
     assert vars(
         SimpleDataClass(string=123, integer="123", floating="1.0")
@@ -44,3 +50,8 @@ def test_cast_attributes_unsupported():
     with pytest.raises(exceptions.UnsupportedType):
         UnsupportedCastRequired(bytes=123)
     UnsupportedCastRequired(bytes=b"123")
+
+
+def test_invalid_default_value():
+    with pytest.raises(exceptions.InvalidDefaultValue):
+        InvalidDefaultValue()
