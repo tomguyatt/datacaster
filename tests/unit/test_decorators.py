@@ -7,7 +7,7 @@ from typing import Optional
 from datacaster import decorators, exceptions
 
 
-@decorators.cast_attributes
+@decorators.cast_attributes()
 @dataclass(frozen=True)
 class SimpleDataClass:
     string: str
@@ -16,13 +16,13 @@ class SimpleDataClass:
     optional_string: Optional[str] = None
 
 
-@decorators.cast_attributes
+@decorators.cast_attributes()
 @dataclass(frozen=True)
 class UnsupportedCastRequired:
     bytes: bytes
 
 
-@decorators.cast_attributes
+@decorators.cast_attributes()
 @dataclass(frozen=True)
 class InvalidDefaultValue:
     integer: Optional[int] = "lol"
