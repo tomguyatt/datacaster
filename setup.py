@@ -5,7 +5,7 @@ TEST_DEPENDENCIES = ["pytest==4.6.3", "pytest-cov==2.8.1", "coverage==5.0"]
 setup(
     name="datacaster",
     description="Cast dataclass attributes on object instantiation.",
-    version="0.1.4",
+    version="0.1.5",
     author="Tom Guyatt",
     maintainer="Tom Guyatt",
     author_email="tomguyatt@gmail.com",
