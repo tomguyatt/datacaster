@@ -14,7 +14,7 @@ setup(
     packages=["datacaster"],
     zip_safe=False,
     classifiers=[
-        "Development Status :: 5 - production",
+        "Development Status :: 3 - Alpha",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Topic :: Software Development :: Libraries :: Python Modules",
