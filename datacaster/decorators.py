@@ -21,33 +21,25 @@ def _check_argument_type(argument_name, argument_value, argument_annotation):
 
     if annotations.is_custom_type(argument_annotation):
         try:
-            if not values.test_value_class(
-                    argument_value, annotations.get_custom_type_classes(argument_annotation)
-            ):
+            if not values.test_value_class(argument_value, annotations.get_custom_type_classes(argument_annotation)):
                 _raise_invalid_default_value()
         except exceptions.UnsupportedType as e:
-            raise exceptions.UnsupportedType(
-                f"Failed to type check argument '{argument_name}'. {str(e)}"
-            )
+            raise exceptions.UnsupportedType(f"Failed to type check argument '{argument_name}'. {str(e)}")
     elif argument_value_type != repr(argument_annotation):
         _raise_invalid_default_value()
 
 
 def _type_check_defaulted_values(kwarg_default_values, argument_annotations, kwargs):
     # Work out which arguments will be fulfilled by their default values so we can check & cast those too.
-    defaulted_kwargs = {
-        key: value for key, value in kwarg_default_values.items() if key not in kwargs
-    }
+    defaulted_kwargs = {key: value for key, value in kwarg_default_values.items() if key not in kwargs}
 
     for argument_name, argument_value in defaulted_kwargs.items():
         _check_argument_type(
-            argument_name,
-            argument_value,
-            annotations.parse_annotation(argument_annotations[argument_name]),
+            argument_name, argument_value, annotations.parse_annotation(argument_annotations[argument_name])
         )
 
 
-def cast_attributes(ignore_extra_args: Optional[bool] = False):
+def cast_attributes(ignore_extra_args: Optional[bool] = False, default_missing_none: Optional[bool] = False):
     def _wrapper(data_class):
         argument_annotations = data_class.__annotations__
         kwarg_default_values = {
@@ -64,16 +56,31 @@ def cast_attributes(ignore_extra_args: Optional[bool] = False):
 
             new_kwargs = {}
 
+            missing_arguments = sorted(
+                [
+                    argument_name
+                    for argument_name in list(argument_annotations.keys())
+                    if argument_name not in list(kwargs.keys()) + list(kwarg_default_values.keys())
+                ]
+            )
+            if missing_arguments:
+                if not default_missing_none:
+                    raise TypeError(
+                        f"The following required dataclass arguments have not been supplied - {missing_arguments}. "
+                        "Use the default_missing_none keyword argument to default any missing arguments to None."
+                    )
+                for argument_name in missing_arguments:
+                    new_kwargs[argument_name] = None
+
             for argument_name, argument_value in kwargs.items():
+                logger.debug(f"working on {argument_name} with value {argument_value}")
                 # Iterate over the supplied keyword arguments, and compare their types
                 # with the expected types collected from the dataclass type annotations.
 
                 # If an argument is supplied that is not defined in annotations, either raise an Exception or ignore the
                 # argument. This behaviour is decided by the optional decorator keyword argument IgnoreExtraArgs.
                 try:
-                    argument_annotation = annotations.parse_annotation(
-                        argument_annotations[argument_name]
-                    )
+                    argument_annotation = annotations.parse_annotation(argument_annotations[argument_name])
                 except KeyError as e:
                     if ignore_extra_args:
                         logger.debug(f"ignoring unexpected extra argument {argument_name} supplied to dataclass")
@@ -115,6 +122,8 @@ def cast_attributes(ignore_extra_args: Optional[bool] = False):
                     else:
                         logger.info(f"argument {argument_name} is already a valid type")
                         new_kwargs[argument_name] = argument_value
+
+            logger.info(f"produced new kwargs: {new_kwargs}")
             return data_class(*args, **new_kwargs)
 
         return _inner
