@@ -41,7 +41,7 @@ def _type_check_defaulted_values(kwarg_default_values, argument_annotations, kwa
 
 
 def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optional[bool] = True):
-    def _wrapper(data_class):
+    def _dataclass_wrapper(data_class):
         argument_annotations = data_class.__annotations__
         kwarg_default_values = {
             field_name: field_data.default
@@ -50,7 +50,7 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
         }
 
         @functools.wraps(data_class)
-        def _inner(*args, **kwargs):
+        def _cast_attributes(*args, **kwargs):
             # Make sure that any arguments falling back to their default values are the correct type. If this raises
             # it shouldn't get caught and ignored because it means either a type annotation or a default value is wrong.
             _type_check_defaulted_values(kwarg_default_values, argument_annotations, kwargs)
@@ -92,7 +92,7 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                 # the scope that contains the annotation, name, and value of each argument.
                 def _cast_simple(valid_type):
                     try:
-                        logger.info(f"casting argument {argument_name} to {valid_type}")
+                        logger.debug(f"casting argument {argument_name} to {valid_type}")
                         return values.cast_simple_type(valid_type, argument_value)
                     except KeyError:
                         raise exceptions.UnsupportedType(
@@ -145,7 +145,7 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                             )  # noqa (ignore E721: using isinstance is not correct here)
                             new_kwargs[argument_name] = _cast_simple(valid_type)
                         else:
-                            logger.info(f"argument {argument_name} is already a valid type")
+                            logger.debug(f"argument {argument_name} is already a valid type")
                             new_kwargs[argument_name] = argument_value
 
                 else:
@@ -153,12 +153,12 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                     if not values.test_value_class(argument_value, [argument_annotation]):
                         new_kwargs[argument_name] = _cast_simple(argument_annotation)
                     else:
-                        logger.info(f"argument {argument_name} is already a valid type")
+                        logger.debug(f"argument {argument_name} is already a valid type")
                         new_kwargs[argument_name] = argument_value
 
-            logger.info(f"produced new kwargs: {new_kwargs}")
+            logger.debug(f"produced new kwargs: {new_kwargs}")
             return data_class(*args, **new_kwargs)
 
-        return _inner
+        return _cast_attributes
 
-    return _wrapper
+    return _dataclass_wrapper
