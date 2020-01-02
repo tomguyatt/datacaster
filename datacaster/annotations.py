@@ -8,9 +8,18 @@ def parse_annotation(annotation):
     return annotation or annotation.__class__
 
 
-def is_custom_type(type_annotation):
+def is_custom_type(annotation):
     # All types from the typing module *seem* to be an instance of typing._GenericAlias.
-    return isinstance(type_annotation, _GenericAlias)
+    return isinstance(annotation, _GenericAlias)
+
+
+def get_origin(annotation):
+    return annotation.__origin__
+
+
+def is_collection(annotation):
+    # Return True if the custom annotation is a collection (typing.List, typing.Tuple)
+    return get_origin(annotation) in {tuple, list}
 
 
 def get_custom_type_classes(annotation) -> tuple:
@@ -21,14 +30,22 @@ def get_custom_type_classes(annotation) -> tuple:
     #
     #   Optional[str] -> (str, NoneType)
     #   Union[int, None] -> (int, NoneType)
+    #   List[str] -> (str)
     #
-    if annotation.__origin__ in {Union, Optional}:
+    if is_collection(annotation):
+        if isinstance(annotation.__args__[0], _GenericAlias):
+            raise exceptions.UnsupportedType(
+                f"Type {annotation} is not supported. Lists and tuples must only contain builtin types."
+            )
+        return annotation.__args__
+
+    elif get_origin(annotation) in {Union, Optional}:
         if len(annotation.__args__) > 2:
             raise exceptions.UnsupportedType(
                 f"Type {annotation} is not supported as it contains too many Union types."
             )
         elif not any(
-            [t == type(None) for t in annotation.__args__]
+                [t == type(None) for t in annotation.__args__]
         ):  # noqa (ignore E721: using isinstance is not correct here)
             raise exceptions.UnsupportedType(
                 f"Type {annotation} is not supported. One of the Union types must be None."
@@ -41,5 +58,6 @@ def get_custom_type_classes(annotation) -> tuple:
         return annotation.__args__
     else:
         raise exceptions.UnsupportedType(
-            f"Unsupported custom type {annotation}. Only Optional[builtin] and Union[builtin, None] is supported ."
+            f"Unsupported custom type {annotation}. Only Optional[builtin], List[builtin], and "
+            "Union[builtin, None] are supported ."
         )

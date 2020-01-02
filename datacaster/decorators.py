@@ -2,6 +2,7 @@ import functools
 import logging
 
 from dataclasses import _MISSING_TYPE
+from collections.abc import Iterable
 
 from typing import Optional
 
@@ -39,7 +40,7 @@ def _type_check_defaulted_values(kwarg_default_values, argument_annotations, kwa
         )
 
 
-def cast_attributes(ignore_extra_args: Optional[bool] = False, default_missing_none: Optional[bool] = False):
+def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optional[bool] = True):
     def _wrapper(data_class):
         argument_annotations = data_class.__annotations__
         kwarg_default_values = {
@@ -64,7 +65,7 @@ def cast_attributes(ignore_extra_args: Optional[bool] = False, default_missing_n
                 ]
             )
             if missing_arguments:
-                if not default_missing_none:
+                if not set_missing_none:
                     raise TypeError(
                         f"The following required dataclass arguments have not been supplied - {missing_arguments}. "
                         "Use the default_missing_none keyword argument to default any missing arguments to None."
@@ -82,7 +83,7 @@ def cast_attributes(ignore_extra_args: Optional[bool] = False, default_missing_n
                 try:
                     argument_annotation = annotations.parse_annotation(argument_annotations[argument_name])
                 except KeyError as e:
-                    if ignore_extra_args:
+                    if ignore_extra:
                         logger.debug(f"ignoring unexpected extra argument {argument_name} supplied to dataclass")
                         continue
                     raise e
@@ -102,19 +103,44 @@ def cast_attributes(ignore_extra_args: Optional[bool] = False, default_missing_n
 
                 if annotations.is_custom_type(argument_annotation):
                     logger.debug(f"argument {argument_name} uses custom type {argument_annotation}")
-                    valid_types = annotations.get_custom_type_classes(argument_annotation)
-                    if not values.test_value_class(argument_value, valid_types):
-                        # The value is not one of the types described by the custom type annotation. As we only
-                        # support basic Union[builtin, None] types, and we almost certainly don't want to cast
-                        # this value to None, we should try to cast it to the other type in the Union. To get
-                        # the type to cast to we need to remove the NoneType entry from the valid_types tuple.
-                        valid_type = next(
-                            filter(lambda x: x != type(None), valid_types)
-                        )  # noqa (ignore E721: using isinstance is not correct here)
-                        new_kwargs[argument_name] = _cast_simple(valid_type)
+
+                    # We can support making lists or tuples of simple builtin types. Work out whether this value should
+                    # be a list or tuple. If it should be, then check if the supplied value is Iterable. If it isn't
+                    # this code will fail.
+                    if annotations.is_collection(argument_annotation):
+                        logger.debug("custom type is a collection")
+                        if not isinstance(argument_value, Iterable):
+                            raise exceptions.CastFailed(
+                                f"Field '{argument_name}' has type annotation {argument_annotation} but the supplied "
+                                f"value '{argument_value}' is not iterable."
+                            )
+                        collection_type = annotations.get_origin(argument_annotation)
+                        valid_type = annotations.get_custom_type_classes(argument_annotation)
+                        cast_collection_values = []
+                        for value in argument_value:
+                            # Iterate over the supplied values and cast them if necessary.
+                            if not values.test_value_class(value, valid_type):
+                                cast_collection_values.append(values.cast_simple_type(valid_type[0], value))
+                                continue
+                            cast_collection_values.append(value)
+
+                        new_kwargs[argument_name] = collection_type(cast_collection_values)
+
                     else:
-                        logger.info(f"argument {argument_name} is already a valid type")
-                        new_kwargs[argument_name] = argument_value
+                        valid_types = annotations.get_custom_type_classes(argument_annotation)
+                        if not values.test_value_class(argument_value, valid_types):
+                            # The value is not one of the types described by the custom type annotation. As we only
+                            # support basic Union[builtin, None] types, and we almost certainly don't want to cast
+                            # this value to None, we should try to cast it to the other type in the Union. To get
+                            # the type to cast to we need to remove the NoneType entry from the valid_types tuple.
+                            valid_type = next(
+                                filter(lambda x: x != type(None), valid_types)
+                            )  # noqa (ignore E721: using isinstance is not correct here)
+                            new_kwargs[argument_name] = _cast_simple(valid_type)
+                        else:
+                            logger.info(f"argument {argument_name} is already a valid type")
+                            new_kwargs[argument_name] = argument_value
+
                 else:
                     logger.debug(f"argument {argument_name} uses simple type {argument_annotation}")
                     if not values.test_value_class(argument_value, [argument_annotation]):
