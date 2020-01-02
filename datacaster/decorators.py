@@ -74,7 +74,6 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                     new_kwargs[argument_name] = None
 
             for argument_name, argument_value in kwargs.items():
-                logger.debug(f"working on {argument_name} with value {argument_value}")
                 # Iterate over the supplied keyword arguments, and compare their types
                 # with the expected types collected from the dataclass type annotations.
 
@@ -84,7 +83,6 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                     argument_annotation = annotations.parse_annotation(argument_annotations[argument_name])
                 except KeyError as e:
                     if ignore_extra:
-                        logger.debug(f"ignoring unexpected extra argument {argument_name} supplied to dataclass")
                         continue
                     raise e
 
@@ -108,7 +106,6 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                     # be a list or tuple. If it should be, then check if the supplied value is Iterable. If it isn't
                     # this code will fail.
                     if annotations.is_collection(argument_annotation):
-                        logger.debug("custom type is a collection")
                         if not isinstance(argument_value, Iterable):
                             raise exceptions.CastFailed(
                                 f"Field '{argument_name}' has type annotation {argument_annotation} but the supplied "
@@ -126,9 +123,6 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                                 )
                                 cast_collection_values.append(values.cast_simple_type(valid_type, value))
                                 continue
-                            logger.debug(
-                                f"argument {argument_name} collection value {value} is already the correct type"
-                            )
                             cast_collection_values.append(value)
 
                         new_kwargs[argument_name] = collection_type(cast_collection_values)
@@ -145,18 +139,14 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                             )  # noqa (ignore E721: using isinstance is not correct here)
                             new_kwargs[argument_name] = _cast_simple(valid_type)
                         else:
-                            logger.debug(f"argument {argument_name} is already a valid type")
                             new_kwargs[argument_name] = argument_value
 
                 else:
-                    logger.debug(f"argument {argument_name} uses simple type {argument_annotation}")
                     if not values.test_value_class(argument_value, [argument_annotation]):
                         new_kwargs[argument_name] = _cast_simple(argument_annotation)
                     else:
-                        logger.debug(f"argument {argument_name} is already a valid type")
                         new_kwargs[argument_name] = argument_value
 
-            logger.debug(f"produced new kwargs: {new_kwargs}")
             return data_class(*args, **new_kwargs)
 
         return _cast_attributes
