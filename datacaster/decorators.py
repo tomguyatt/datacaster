@@ -2,7 +2,6 @@ import functools
 import logging
 
 from dataclasses import _MISSING_TYPE
-from collections.abc import Iterable
 
 from typing import Optional
 
@@ -103,27 +102,31 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                     logger.debug(f"argument {argument_name} uses custom type {argument_annotation}")
 
                     # We can support making lists or tuples of simple builtin types. Work out whether this value should
-                    # be a list or tuple. If it should be, then check if the supplied value is Iterable. If it isn't
-                    # this code will fail.
+                    # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
                     if annotations.is_collection(argument_annotation):
-                        if not isinstance(argument_value, Iterable):
-                            raise exceptions.CastFailed(
-                                f"Field '{argument_name}' has type annotation {argument_annotation} but the supplied "
-                                f"value '{argument_value}' is not iterable."
-                            )
+
                         collection_type = annotations.get_origin(argument_annotation)
                         valid_types = annotations.get_custom_type_classes(argument_annotation)
                         cast_collection_values = []
-                        for value in argument_value:
-                            # Iterate over the supplied values and cast them if necessary.
+
+                        def _cast_collection_item(value):
                             if not values.test_value_class(value, valid_types):
                                 valid_type = valid_types[0]  # There will only be one.
                                 logger.debug(
                                     f"casting argument {argument_name} collection value {value} to {valid_type}"
                                 )
-                                cast_collection_values.append(values.cast_simple_type(valid_type, value))
+                                return values.cast_simple_type(valid_type, value)
+                            return value
+
+                        if not isinstance(argument_value, (list, tuple)):
+                            # If the value isn't already a list or tuple, cast it if necessary then put it inside a
+                            # new instance of the collection type specified in the annotation.
+                            cast_collection_values.append(_cast_collection_item(argument_value))
+                        else:
+                            for value in argument_value:
+                                # Iterate over the supplied values and cast them if necessary.
+                                cast_collection_values.append(_cast_collection_item(value))
                                 continue
-                            cast_collection_values.append(value)
 
                         new_kwargs[argument_name] = collection_type(cast_collection_values)
 

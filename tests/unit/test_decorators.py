@@ -2,7 +2,7 @@ import re
 import pytest
 
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from datacaster import decorators, exceptions
 
@@ -14,6 +14,7 @@ class SimpleDataClass:
     integer: int
     floating: float
     list_string: List[str]
+    tuple_int: Tuple[int]
     optional_string: Optional[str] = None
 
 
@@ -48,37 +49,107 @@ class NoMissingOrIgnore:
     string: str
 
 
-def test_cast_attributes_simple():
-    assert vars(SimpleDataClass(string=123, integer="123", floating="1.0", list_string=["1", "2", "3"])) == {
-        "string": "123",
-        "integer": 123,
-        "floating": 1.0,
-        "list_string": ["1", "2", "3"],
-        "optional_string": None,
-    }
-
-    assert vars(
-        SimpleDataClass(string=1.0, integer=123.0, floating=1, list_string=[1, 2, 3], optional_string=None)
-    ) == {"string": "1.0", "integer": 123, "floating": 1.0, "list_string": ["1", "2", "3"], "optional_string": None}
-
-    assert vars(
-        SimpleDataClass(
-            string=None, integer=123.0, floating=1, list_string=[1.0, None, {"lol": "cat"}], optional_string=123
-        )
-    ) == {
-               "string": "None",
-               "integer": 123,
-               "floating": 1.0,
-               "list_string": ["1.0", "None", "{'lol': 'cat'}"],
-               "optional_string": "123",
-           }
-
-    assert vars(
-        SimpleDataClass(string="123", integer=123, floating=1.0, list_string=(1, 2, 3), optional_string="hello")
-    ) == {"string": "123", "integer": 123, "floating": 1.0, "list_string": ["1", "2", "3"], "optional_string": "hello"}
-
-    with pytest.raises(exceptions.CastFailed):
-        SimpleDataClass(string="123", integer=123, floating=1.0, list_string=1, optional_string="hello")
+@pytest.mark.parametrize(
+    "constructor, expected_dict",
+    [
+        [
+            {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"},
+            {
+                "string": "123",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": ["1", "2", "3"],
+                "tuple_int": (1,),
+                "optional_string": None,
+            },
+        ],
+        [
+            {"string": 1.0, "integer": 123.0, "floating": 1, "list_string": [1, 2, 3], "tuple_int": 1.0},
+            {
+                "string": "1.0",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": ["1", "2", "3"],
+                "tuple_int": (1,),
+                "optional_string": None,
+            },
+        ],
+        [
+            {
+                "string": None,
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": [1.0, None, {"lol": "cat"}],
+                "tuple_int": ("1",),
+                "optional_string": 123,
+            },
+            {
+                "string": "None",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": ["1.0", "None", "{'lol': 'cat'}"],
+                "tuple_int": (1,),
+                "optional_string": "123",
+            },
+        ],
+        [
+            {
+                "string": "123",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": (1, 2, 3),
+                "tuple_int": (1,),
+                "optional_string": "hello",
+            },
+            {
+                "string": "123",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": ["1", "2", "3"],
+                "tuple_int": (1,),
+                "optional_string": "hello",
+            },
+        ],
+        [
+            {
+                "string": ["test", "list"],
+                "integer": "123",
+                "floating": "1.0",
+                "list_string": "this will be a list",
+                "tuple_int": False,
+                "optional_string": None,
+            },
+            {
+                "string": "['test', 'list']",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": ["this will be a list"],
+                "tuple_int": (0,),
+                "optional_string": None,
+            },
+        ],
+        [
+            {
+                "string": ["test", "list"],
+                "integer": "123",
+                "floating": "1.0",
+                "list_string": "this will be a list",
+                "tuple_int": (True,),
+                "optional_string": None,
+            },
+            {
+                "string": "['test', 'list']",
+                "integer": 123,
+                "floating": 1.0,
+                "list_string": ["this will be a list"],
+                "tuple_int": (1,),
+                "optional_string": None,
+            },
+        ],
+    ],
+)
+def test_cast_attributes_simple(constructor, expected_dict):
+    assert vars(SimpleDataClass(**constructor)) == expected_dict
 
 
 def test_cast_attributes_unsupported():
@@ -99,7 +170,14 @@ def test_invalid_default_value():
 def test_ignore_extra():
     assert vars(
         SimpleDataClass(string="123", integer=123, floating=1.0, optional_string="hello", extra_to_ignore="hello")
-    ) == {"string": "123", "integer": 123, "floating": 1.0, "list_string": None, "optional_string": "hello"}
+    ) == {
+        "string": "123",
+        "integer": 123,
+        "floating": 1.0,
+        "list_string": None,
+        "tuple_int": None,
+        "optional_string": "hello",
+    }
 
 
 def test_missing_none():
@@ -108,6 +186,7 @@ def test_missing_none():
         "integer": None,
         "floating": None,
         "list_string": None,
+        "tuple_int": None,
         "optional_string": None,
     }
 
