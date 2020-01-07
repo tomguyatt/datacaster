@@ -98,6 +98,7 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                         )
 
                 if annotations.is_custom_type(argument_annotation):
+                    logger.debug(f"argument {argument_name} is custom type {argument_annotation}")
                     # We can support making lists or tuples of simple builtin types. Work out whether this value should
                     # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
                     if annotations.is_collection(argument_annotation):

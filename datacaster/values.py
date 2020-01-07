@@ -1,6 +1,9 @@
 import functools
+import logging
 
 from . import exceptions
+
+logger = logging.getLogger(__name__)
 
 
 def _raise_on_fail(type_name):
@@ -42,7 +45,12 @@ ANNOTATION_CAST_FUNCTIONS = {
 
 
 def test_value_class(argument_value, valid_types):
-    return repr(argument_value.__class__) in [repr(t) for t in valid_types]
+    result = repr(argument_value.__class__) in [repr(t) for t in valid_types]
+    if not result:
+        logger.debug(f"type of value {argument_value} is not one of {valid_types}")
+    else:
+        logger.debug(f"type of value {argument_value} is one of {valid_types}")
+    return result
 
 
 def cast_simple_type(expected_type, value, name):

@@ -1,6 +1,10 @@
+import logging
+
 from typing import Union, Optional, _GenericAlias
 
 from . import exceptions
+
+logger = logging.getLogger(__name__)
 
 
 def parse_annotation(annotation):
@@ -32,18 +36,21 @@ def get_custom_type_classes(annotation) -> tuple:
     #   Union[int, None] -> (int, NoneType)
     #   List[str] -> (str)
     #
+    def _get_annotation_args():
+        valid_types = annotation.__args__
+        logger.debug(f"valid types for annotation {annotation} are {annotation.__args__}")
+        return valid_types
+
     if is_collection(annotation):
         if isinstance(annotation.__args__[0], _GenericAlias):
             raise exceptions.UnsupportedType(
                 f"Type {annotation} is not supported. Lists and tuples must only contain builtin types."
             )
-        return annotation.__args__
+        return _get_annotation_args()
 
     elif get_origin(annotation) in {Union, Optional}:
         if len(annotation.__args__) > 2:
-            raise exceptions.UnsupportedType(
-                f"Type {annotation} is not supported as it contains too many Union types."
-            )
+            raise exceptions.UnsupportedType(f"Type {annotation} is not supported as it contains too many Union types.")
         elif not any(
                 [t == type(None) for t in annotation.__args__]
         ):  # noqa (ignore E721: using isinstance is not correct here)
@@ -55,7 +62,7 @@ def get_custom_type_classes(annotation) -> tuple:
                 f"Type {annotation} is not supported. Only builtin types are "
                 "currently supported in Union and Optional custom types."
             )
-        return annotation.__args__
+        return _get_annotation_args()
     else:
         raise exceptions.UnsupportedType(
             f"Unsupported custom type {annotation}. Only Optional[builtin], List[builtin], and "
