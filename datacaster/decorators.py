@@ -67,7 +67,6 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                 if not set_missing_none:
                     raise TypeError(
                         f"The following required dataclass arguments have not been supplied - {missing_arguments}. "
-                        "Use the default_missing_none keyword argument to default any missing arguments to None."
                     )
                 for argument_name in missing_arguments:
                     new_kwargs[argument_name] = None
@@ -90,7 +89,7 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                 def _cast_simple(valid_type):
                     try:
                         logger.debug(f"casting argument {argument_name} to {valid_type}")
-                        return values.cast_simple_type(valid_type, argument_value)
+                        return values.cast_simple_type(valid_type, argument_value, argument_name)
                     except KeyError:
                         raise exceptions.UnsupportedType(
                             f"Field '{argument_name}' has supplied value '{argument_value}' with invalid "
@@ -99,8 +98,6 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                         )
 
                 if annotations.is_custom_type(argument_annotation):
-                    logger.debug(f"argument {argument_name} uses custom type {argument_annotation}")
-
                     # We can support making lists or tuples of simple builtin types. Work out whether this value should
                     # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
                     if annotations.is_collection(argument_annotation):
@@ -115,7 +112,7 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                                 logger.debug(
                                     f"casting argument {argument_name} collection value {value} to {valid_type}"
                                 )
-                                return values.cast_simple_type(valid_type, value)
+                                return values.cast_simple_type(valid_type, value, argument_name)
                             return value
 
                         if not isinstance(argument_value, (list, tuple)):
