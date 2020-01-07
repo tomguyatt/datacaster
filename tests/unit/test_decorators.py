@@ -2,7 +2,7 @@ import re
 import pytest
 
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 
 from datacaster import decorators, exceptions
 
@@ -47,6 +47,12 @@ class InvalidDefaultValueCustom:
 class NoMissingOrIgnore:
     integer: int
     string: str
+
+
+@decorators.cast_attributes()
+@dataclass(frozen=True)
+class TestSkippedAny:
+    any: Any
 
 
 @pytest.mark.parametrize(
@@ -171,13 +177,13 @@ def test_ignore_extra():
     assert vars(
         SimpleDataClass(string="123", integer=123, floating=1.0, optional_string="hello", extra_to_ignore="hello")
     ) == {
-        "string": "123",
-        "integer": 123,
-        "floating": 1.0,
-        "list_string": None,
-        "tuple_int": None,
-        "optional_string": "hello",
-    }
+               "string": "123",
+               "integer": 123,
+               "floating": 1.0,
+               "list_string": None,
+               "tuple_int": None,
+               "optional_string": "hello",
+           }
 
 
 def test_missing_none():
@@ -199,3 +205,9 @@ def test_no_missing_none():
 def test_no_ignore_extra():
     with pytest.raises(KeyError):
         NoMissingOrIgnore(integer=123, string="lol", extra="hello")
+
+
+def test_any():
+    assert vars(TestSkippedAny(any=None)) == {"any": None}
+    assert vars(TestSkippedAny(any=123)) == {"any": 123}
+    assert vars(TestSkippedAny(any="123")) == {"any": "123"}

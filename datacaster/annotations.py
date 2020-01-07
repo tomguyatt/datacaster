@@ -17,6 +17,14 @@ def is_custom_type(annotation):
     return isinstance(annotation, _GenericAlias)
 
 
+def is_any(annotation):
+    try:
+        return annotation._name == "Any"
+    except Exception:
+        # If it couldn't lookup the _name attribute, it isn't "Any".
+        return False
+
+
 def get_origin(annotation):
     return annotation.__origin__
 

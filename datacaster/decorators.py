@@ -84,6 +84,15 @@ def cast_attributes(ignore_extra: Optional[bool] = True, set_missing_none: Optio
                         continue
                     raise e
 
+                # If the argument annotation is 'typing.Any' then chuck it straight into the new_kwargs and continue.
+                if annotations.is_any(argument_annotation):
+                    logger.debug(
+                        f"argument {argument_name} has annotation {argument_annotation} so all "
+                        "testing and casting will be skipped."
+                    )
+                    new_kwargs[argument_name] = argument_value
+                    continue
+
                 # This can be called from multiple code paths, so define it once inside
                 # the scope that contains the annotation, name, and value of each argument.
                 def _cast_simple(valid_type):
