@@ -3,6 +3,8 @@ import inspect
 from dataclasses import dataclass
 from typing import Optional
 
+from . import annotations, types
+
 
 @dataclass(init=False, frozen=True)
 class CastObject:
@@ -11,7 +13,7 @@ class CastObject:
         """
         Return a {name: default_value} dictionary of all attributes that have default
         values in the class annotation. The self.__dataclass_fields__ attribute is empty
-        because annotations come from other classes that inherit from this one.
+        because annotations come from the child classes that inherit from this one.
 
         Another way we can get default values is by looping over the attribute names in
         __annotations__ and seeing if they exist in self **before** we go through testing
@@ -30,7 +32,7 @@ class CastObject:
                     default_values[attribute_name] = attribute_value
         return default_values
 
-    def _get_defaulting_attributes(self, kwargs):
+    def _get_defaulted_attributes(self, kwargs):
         """
         Return a {name: default_value} dictionary of all arguments that will fall back
         to their default values. We use this to type check default values against each
@@ -38,17 +40,17 @@ class CastObject:
         """
         return {name: value for name, value in self._get_default_values().items() if name not in kwargs}
 
+    def _type_check_defaulted_values(self, defaulted_attributes):
+        for attribute_name, attribute_value in defaulted_attributes.items():
+            types._check_argument_type(
+                attribute_name, attribute_value, annotations.parse_annotation(self.__annotations__[argument_name])
+            )
+
     def __init__(self, *_, **kwargs):
-        """
-        - Unpack the type annotations and kwargs.
-        - For each annotated argument:
-            - If in kwargs:
-                - Compare the type annotation to the value -> cast if necessary -> add to new attributes dict.
-            - If not in kwargs and SET_DEFAULT_NONE is True -> add to new attributes dict as None.
-            - If not in kwargs and SET_DEFAULT_NONE is False -> raise.
-        """
-        annotations = self.__annotations__
-        unfulfilled_attributes = self._get_defaulting_attributes(kwargs)
+        # Type check the default values of any attributes that will be using
+        # default values. We want to do this as soon as possible.
+        self._type_check_defaulted_values(self._get_defaulted_attributes(kwargs))
+
         new_class_attributes = {}
 
         for argument_name, argument_type in annotations.items():
