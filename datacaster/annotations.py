@@ -19,7 +19,9 @@ def is_custom_type(annotation):
 
 def is_any(annotation):
     try:
-        return annotation._name == "Any"
+        result = annotation._name.lower() == "any"
+        logger.debug(f"annotation {annotation} {'is' if result else 'is not'} 'Any'")
+        return result
     except Exception:
         # If it couldn't lookup the _name attribute, it isn't "Any".
         return False
