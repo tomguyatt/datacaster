@@ -1,7 +1,7 @@
 import re
 import pytest
 
-from datacaster import values, exceptions
+from datacaster import value_cast, exceptions
 
 
 class UnStringableInt(int):
@@ -25,9 +25,9 @@ class UnStringableInt(int):
 def test_cast_to_string(input, expected_output, expected_exception):
     if expected_exception:
         with pytest.raises(expected_exception):
-            values.cast_to_string(input, None)
+            value_cast.cast_to_string(input, None)
     else:
-        assert values.cast_to_string(input, None) == expected_output
+        assert value_cast.cast_to_string(input, None) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -44,6 +44,6 @@ def test_cast_to_string(input, expected_output, expected_exception):
 def test_cast_to_int(input, expected_output, expected_exception):
     if expected_exception:
         with pytest.raises(expected_exception):
-            values.cast_to_int(input, None)
+            value_cast.cast_to_int(input, None)
     else:
-        assert values.cast_to_int(input, None) == expected_output
+        assert value_cast.cast_to_int(input, None) == expected_output

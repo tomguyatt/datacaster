@@ -6,7 +6,7 @@ from . import exceptions
 logger = logging.getLogger(__name__)
 
 
-def _raise_on_fail(type_name):
+def raise_on_fail(type_name):
     def _wrapper(func):
         @functools.wraps(func)
         def _inner(value, name):
@@ -22,17 +22,17 @@ def _raise_on_fail(type_name):
     return _wrapper
 
 
-@_raise_on_fail("string")
+@raise_on_fail("string")
 def cast_to_string(value, _):
     return str(value)
 
 
-@_raise_on_fail("integer")
+@raise_on_fail("integer")
 def cast_to_int(value, _):
     return int(value)
 
 
-@_raise_on_fail("float")
+@raise_on_fail("float")
 def cast_to_float(value, _):
     return float(value)
 
@@ -54,4 +54,5 @@ def test_value_class(argument_value, valid_types):
 
 
 def cast_simple_type(expected_type, value, name):
+    logger.debug(f"looking for cast function for {expected_type}")
     return ANNOTATION_CAST_FUNCTIONS[repr(expected_type)](value, name)

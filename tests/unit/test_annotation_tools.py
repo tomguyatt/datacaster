@@ -3,7 +3,7 @@ import pytest
 
 import typing
 
-from datacaster import annotations, exceptions
+from datacaster import annotation_tools, exceptions
 
 
 @pytest.mark.parametrize(
@@ -17,7 +17,7 @@ from datacaster import annotations, exceptions
     ids=["str", "none", "typing_list", "optional_str"],
 )
 def test_parse_annotation(value, expected_output):
-    assert repr(annotations.parse_annotation(value)) == expected_output
+    assert repr(annotation_tools.parse_annotation(value)) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -26,7 +26,7 @@ def test_parse_annotation(value, expected_output):
     ids=["str", "none", "typing_list", "optional_str"],
 )
 def test_is_custom_type(value, expected_output):
-    assert annotations.is_custom_type(value) == expected_output
+    assert annotation_tools.is_custom_type(value) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -56,9 +56,14 @@ def test_get_custom_type_classes(value, expected_type_classes, expected_exceptio
     # This function is only called on custom types, not builtins.
     if expected_exception:
         with pytest.raises(expected_exception):
-            annotations.get_custom_type_classes(value)
+            annotation_tools.get_custom_type_classes(value)
     else:
         assert (
-                tuple([repr(type_class) for type_class in annotations.get_custom_type_classes(value)])
-                == expected_type_classes
+            tuple(
+                [
+                    repr(type_class)
+                    for type_class in annotation_tools.get_custom_type_classes(value)
+                ]
+            )
+            == expected_type_classes
         )
