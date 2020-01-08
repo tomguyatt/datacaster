@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 @dataclass(init=False, frozen=True)
 class CastObject:
 
+    def __repr__(self):
+        attribute_string = ','.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
+        return f"{self.__class__.__name__}({attribute_string})"
+
     def _get_default_values(self):
         """
         Return a {name: default_value} dictionary of all attributes that have default
@@ -30,7 +34,7 @@ class CastObject:
         """
         default_values = {}
         for attribute_name in self.__annotations__:
-            if attribute_value := getattr(self, attribute_name):
+            if attribute_value := getattr(self, attribute_name, None):
                 if not inspect.ismethod(attribute_value):
                     default_values[attribute_name] = attribute_value
         return default_values
@@ -58,6 +62,9 @@ class CastObject:
         return {name: value for name, value in kwargs.items() if name not in self.__annotations__}
 
     def __init__(self, *_, **kwargs):
+        SET_MISSING_NONE = getattr(self, "SET_MISSING_NONE", False)
+        IGNORE_EXTRA = getattr(self, "IGNORE_EXTRA", False)
+
         # Type check the default values of any attributes that will be using
         # default values. We want to do this as soon as possible.
         defaulted_attributes = self._get_defaulted_attributes(kwargs)
@@ -68,7 +75,7 @@ class CastObject:
 
         # Find any attributes in kwargs that aren't annotated. Their
         # existence can either be ignored or trigger an exception.
-        if unexpected_attributes := self._get_unexpected_attributes(kwargs) and not self.IGNORE_EXTRA:
+        if unexpected_attributes := self._get_unexpected_attributes(kwargs) and not IGNORE_EXTRA:
             raise exceptions.UnexpectedAttribute(
                 f"Received values for the following unannotated attributes(s) {list(unexpected_attributes.keys())}."
             )
@@ -156,13 +163,15 @@ class CastObject:
                     else:
                         new_class_attributes[annotated_attribute] = attribute_value
 
-                new_class_attributes[annotated_attribute] = attribute_value
-            else:
-                # The attribute has not been supplied, which can either be ignored or trigger an exception.
-                if not self.SET_MISSING_NONE:
+            elif annotated_attribute not in defaulted_attributes:
+                # The attribute has not been supplied and is not in kwargs. This can
+                # either be ignored or trigger an exception.
+                if not SET_MISSING_NONE:
                     raise Exception(f"No value supplied for mandatory keyword argument {annotated_attribute}")
                 else:
                     new_class_attributes[annotated_attribute] = None
+
+        logger.debug(f"new class attributes: {new_class_attributes}")
 
         for name, value in new_class_attributes.items():
             setattr(self, name, value)
