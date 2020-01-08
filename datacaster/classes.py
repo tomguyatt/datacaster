@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class CastDataClass:
-
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.__dict__ == other.__dict__
@@ -17,7 +16,7 @@ class CastDataClass:
 
     @property
     def _attribute_string(self):
-        return ', '.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
+        return ", ".join([f"{key}={repr(value)}" for key, value in vars(self).items()])
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._attribute_string})"
@@ -30,8 +29,9 @@ class CastDataClass:
             return next(
                 iter(
                     [
-                        method_tuple for method_tuple in self._instance_methods() if
-                        method_tuple[0] == f"__cast_{field_name}__"
+                        method_tuple
+                        for method_tuple in self._instance_methods()
+                        if method_tuple[0] == f"__cast_{field_name}__"
                     ]
                 )
             )
@@ -70,14 +70,21 @@ class CastDataClass:
         to their default values. We use this to type check default values against each
         argument type annotation early on.
         """
-        return {name: value for name, value in self._get_default_values().items() if name not in kwargs}
+        return {
+            name: value
+            for name, value in self._get_default_values().items()
+            if name not in kwargs
+        }
 
     def _type_check_defaulted_values(self, defaulted_attributes):
         for attribute_name, attribute_value in defaulted_attributes.items():
-            logger.debug(f"type-checking default value {attribute_value} for attribute {attribute_name}")
+            logger.debug(
+                f"type-checking default value {attribute_value} for attribute {attribute_name}"
+            )
             type_check.check_argument_type(
-                attribute_name, attribute_value,
-                annotation_tools.parse_annotation(self.__annotations__[attribute_name])
+                attribute_name,
+                attribute_value,
+                annotation_tools.parse_annotation(self.__annotations__[attribute_name]),
             )
 
     def _get_unexpected_attributes(self, kwargs):
@@ -85,7 +92,11 @@ class CastDataClass:
         Return a {name: value_type} dictionary of all kwargs provided to the class
         __init__ that do not have relevant annotations.
         """
-        return {name: value for name, value in kwargs.items() if name not in self.__annotations__}
+        return {
+            name: value
+            for name, value in kwargs.items()
+            if name not in self.__annotations__
+        }
 
     def __init__(self, *_, **kwargs):
         # The self attributes for these two are read only.
@@ -133,8 +144,12 @@ class CastDataClass:
             # matter what type the value already is, then continue to the next attribute.
             if method_tuple := self._get_attribute_cast_function(annotated_attribute):
                 method_name, method_object = method_tuple
-                logger.debug(f"found instance method {method_name} to be used on {annotated_attribute}")
-                new_class_attributes[annotated_attribute] = method_object(attribute_value)
+                logger.debug(
+                    f"found instance method {method_name} to be used on {annotated_attribute}"
+                )
+                new_class_attributes[annotated_attribute] = method_object(
+                    attribute_value
+                )
                 continue
 
             # If the argument annotation is 'typing.Any' then chuck it straight into
@@ -151,8 +166,12 @@ class CastDataClass:
             # the scope that contains the annotation, name, and value of each argument.
             def _cast_simple(valid_type):
                 try:
-                    logger.debug(f"casting argument {annotated_attribute} to {valid_type}")
-                    return value_cast.cast_simple_type(valid_type, attribute_value, annotated_attribute)
+                    logger.debug(
+                        f"casting argument {annotated_attribute} to {valid_type}"
+                    )
+                    return value_cast.cast_simple_type(
+                        valid_type, attribute_value, annotated_attribute
+                    )
                 except KeyError:
                     raise exceptions.UnsupportedType(
                         f"Field '{annotated_attribute}' has supplied value '{attribute_value}' with invalid "
@@ -161,7 +180,9 @@ class CastDataClass:
                     )
 
             if annotation_tools.is_custom_type(annotation):
-                logger.debug(f"argument {annotated_attribute} is custom type {annotation}")
+                logger.debug(
+                    f"argument {annotated_attribute} is custom type {annotation}"
+                )
                 # We can support making lists or tuples of simple builtin types. Work out whether this value should
                 # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
                 if annotation_tools.is_collection(annotation):
@@ -177,20 +198,26 @@ class CastDataClass:
                             logger.debug(
                                 f"casting argument {annotated_attribute} collection value {value} to {valid_type}"
                             )
-                            return value_cast.cast_simple_type(valid_type, value, annotated_attribute)
+                            return value_cast.cast_simple_type(
+                                valid_type, value, annotated_attribute
+                            )
                         return value
 
                     if not isinstance(attribute_value, (list, tuple)):
                         # If the value isn't already a list or tuple, cast it if necessary then put it inside a
                         # new instance of the collection type specified in the annotation.
-                        cast_collection_values.append(_cast_collection_item(attribute_value))
+                        cast_collection_values.append(
+                            _cast_collection_item(attribute_value)
+                        )
                     else:
                         for value in attribute_value:
                             # Iterate over the supplied values and cast them if necessary.
                             cast_collection_values.append(_cast_collection_item(value))
                             continue
 
-                    new_class_attributes[annotated_attribute] = collection_type(cast_collection_values)
+                    new_class_attributes[annotated_attribute] = collection_type(
+                        cast_collection_values
+                    )
 
                 else:
                     valid_types = annotation_tools.get_custom_type_classes(annotation)
@@ -205,7 +232,9 @@ class CastDataClass:
                         valid_type = next(
                             filter(lambda x: x != type(None), valid_types)
                         )  # noqa (ignore E721: using isinstance is not correct here)
-                        new_class_attributes[annotated_attribute] = _cast_simple(valid_type)
+                        new_class_attributes[annotated_attribute] = _cast_simple(
+                            valid_type
+                        )
                     else:
                         new_class_attributes[annotated_attribute] = attribute_value
 

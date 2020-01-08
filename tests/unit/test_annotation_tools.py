@@ -59,6 +59,11 @@ def test_get_custom_type_classes(value, expected_type_classes, expected_exceptio
             annotation_tools.get_custom_type_classes(value)
     else:
         assert (
-                tuple([repr(type_class) for type_class in annotation_tools.get_custom_type_classes(value)])
-                == expected_type_classes
+            tuple(
+                [
+                    repr(type_class)
+                    for type_class in annotation_tools.get_custom_type_classes(value)
+                ]
+            )
+            == expected_type_classes
         )
