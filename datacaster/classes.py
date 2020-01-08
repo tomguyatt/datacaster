@@ -125,11 +125,9 @@ class CastDataClass:
                         new_class_attributes[annotated_attribute] = None
                         continue
 
-            # The attribute has been supplied, so we need to type check it and cast if
-            # necessary before adding it to the new class attributes dictionary.
-
             # The first thing to do is see if the class instance has a registered magic
-            # method specifically for this attribute. If there is one, use it and continue.
+            # method specifically for this attribute. If there is one, always use it no
+            # matter what type the value already is, then continue to the next attribute.
             if method_tuple := self._get_attribute_cast_function(annotated_attribute):
                 method_name, method_object = method_tuple
                 logger.debug(f"found instance method {method_name} to be used on {annotated_attribute}")
