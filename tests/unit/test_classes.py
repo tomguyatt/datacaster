@@ -219,3 +219,12 @@ def test_custom_caster():
 
 def test_repr():
     assert repr(TestCustomCaster(string="hello")) == "TestCustomCaster(string='custom cast hello')"
+
+
+def test_eq():
+    constructor = {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"}
+    assert SimpleDataClass(**constructor) == SimpleDataClass(**constructor)
+    assert not SimpleDataClass(**constructor) == SimpleDataClass(
+        **{key: value for key, value in constructor.items() if key != "string"}
+    )
+    assert not SimpleDataClass(**constructor) == TestCustomCaster(string="hello")

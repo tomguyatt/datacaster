@@ -1,7 +1,6 @@
 import inspect
 import logging
 
-from dataclasses import dataclass
 from typing import Optional
 
 from . import annotation_tools, type_check, value_cast, exceptions
@@ -9,8 +8,19 @@ from . import annotation_tools, type_check, value_cast, exceptions
 logger = logging.getLogger(__name__)
 
 
-@dataclass(init=False, frozen=True)
 class CastDataClass:
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        return False
+
+    @property
+    def _attribute_string(self):
+        return ', '.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self._attribute_string})"
 
     def _instance_methods(self) -> tuple:
         return inspect.getmembers(self, predicate=inspect.ismethod)
@@ -27,13 +37,6 @@ class CastDataClass:
             )
         except StopIteration:
             return None
-
-    @property
-    def _attribute_string(self):
-        return ', '.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self._attribute_string})"
 
     def _get_default_values(self):
         """
