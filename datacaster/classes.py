@@ -1,9 +1,12 @@
 import inspect
+import logging
 
 from dataclasses import dataclass
 from typing import Optional
 
-from . import annotations, types
+from . import annotation_parsing, type_checking, value_casting
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(init=False, frozen=True)
@@ -42,46 +45,130 @@ class CastObject:
 
     def _type_check_defaulted_values(self, defaulted_attributes):
         for attribute_name, attribute_value in defaulted_attributes.items():
-            types._check_argument_type(
-                attribute_name, attribute_value, annotations.parse_annotation(self.__annotations__[argument_name])
+            type_checking._check_argument_type(
+                attribute_name, attribute_value,
+                annotation_parsing.parse_annotation(self.__annotations__[attribute_name])
             )
+
+    def _get_unexpected_attributes(self, kwargs):
+        """
+        Return a {name: value_type} dictionary of all kwargs provided to the class
+        __init__ that do not have relevant annotations.
+        """
+        return {name: value for name, value in kwargs.items() if name not in self.__annotations__}
 
     def __init__(self, *_, **kwargs):
         # Type check the default values of any attributes that will be using
         # default values. We want to do this as soon as possible.
-        self._type_check_defaulted_values(self._get_defaulted_attributes(kwargs))
+        defaulted_attributes = self._get_defaulted_attributes(kwargs)
+        self._type_check_defaulted_values(defaulted_attributes)
 
-        new_class_attributes = {}
+        # Start the new attribute dictionary with all arguments using their default value.
+        new_class_attributes = defaulted_attributes
 
-        for argument_name, argument_type in annotations.items():
-            if argument_name not in kwargs:
-                if not self.SET_DEFAULT_NONE:
-                    raise Exception(f"You did not supply a {argument_name}!")
+        # Find any attributes in kwargs that aren't annotated. Their
+        # existence can either be ignored or trigger an exception.
+        if unexpected_attributes := self._get_unexpected_attributes(kwargs) and not self.IGNORE_EXTRA:
+            raise exceptions.UnexpectedAttribute(
+                f"Received values for the following unannotated attributes(s) {list(unexpected_attributes.keys())}."
+            )
+
+        # Start the main attribute testing & casting loop.
+        for annotated_attribute, annotation in self.__annotations__.items():
+
+            annotation = annotation_parsing.parse_annotation(annotation)
+            if attribute_value := kwargs.get(annotated_attribute):
+                # The attribute has been supplied, so we need to type check it and cast if
+                # necessary before adding it to the new class attributes dictionary.
+
+                # If the argument annotation is 'typing.Any' then chuck it straight into
+                # new_class_attributes and continue to the next one.
+                if annotation_parsing.is_any(annotation):
+                    logger.debug(
+                        f"argument {annotated_attribute} has annotation {annotation} so "
+                        f"all testing and casting will be skipped."
+                    )
+                    new_class_attributes[annotated_attribute] = attribute_value
+                    continue
+
+                # This can be called from multiple code paths, so define it once inside
+                # the scope that contains the annotation, name, and value of each argument.
+                def _cast_simple(valid_type):
+                    try:
+                        logger.debug(f"casting argument {annotated_attribute} to {valid_type}")
+                        return value_casting.cast_simple_type(valid_type, attribute_value, annotated_attribute)
+                    except KeyError:
+                        raise exceptions.UnsupportedType(
+                            f"Field '{annotated_attribute}' has supplied value '{attribute_value}' with invalid "
+                            f"type {attribute_value.__class__}. A {annotation} type value is required "
+                            "but casting the supplied value is not supported yet."
+                        )
+
+                if annotation_parsing.is_custom_type(annotation):
+                    logger.debug(f"argument {annotated_attribute} is custom type {annotation}")
+                    # We can support making lists or tuples of simple builtin types. Work out whether this value should
+                    # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
+                    if annotation_parsing.is_collection(annotation):
+
+                        collection_type = annotation_parsing.get_origin(annotation)
+                        valid_types = annotation_parsing.get_custom_type_classes(annotation)
+                        cast_collection_values = []
+
+                        def _cast_collection_item(value):
+                            if not value_casting.test_value_class(value, valid_types):
+                                # There will only be one because something like typing.List[str, int] isn't valid.
+                                valid_type = valid_types[0]
+                                logger.debug(
+                                    f"casting argument {annotated_attribute} collection value {value} to {valid_type}"
+                                )
+                                return value_casting.cast_simple_type(valid_type, value, annotated_attribute)
+                            return value
+
+                        if not isinstance(attribute_value, (list, tuple)):
+                            # If the value isn't already a list or tuple, cast it if necessary then put it inside a
+                            # new instance of the collection type specified in the annotation.
+                            cast_collection_values.append(_cast_collection_item(attribute_value))
+                        else:
+                            for value in attribute_value:
+                                # Iterate over the supplied values and cast them if necessary.
+                                cast_collection_values.append(_cast_collection_item(value))
+                                continue
+
+                        new_class_attributes[annotated_attribute] = collection_type(cast_collection_values)
+
+                    else:
+                        valid_types = annotation_parsing.get_custom_type_classes(annotation)
+                        if not value_casting.test_value_class(attribute_value, valid_types):
+                            # The value is not one of the types described by the custom type annotation. As we only
+                            # support basic Union[builtin, None] types, and we almost certainly don't want to cast
+                            # this value to None, we should try to cast it to the other type in the Union. To get
+                            # the type to cast to we need to remove the NoneType entry from the valid_types tuple.
+                            valid_type = next(
+                                filter(lambda x: x != type(None), valid_types)
+                            )  # noqa (ignore E721: using isinstance is not correct here)
+                            new_class_attributes[annotated_attribute] = _cast_simple(valid_type)
+                        else:
+                            new_class_attributes[annotated_attribute] = attribute_value
+
                 else:
-                    new_class_attributes[argument_name] = None
-            elif argument_name in kwargs:
-                print(f"{argument_name} is in annotations *and* kwargs, so I can do stuff!")
-                new_class_attributes[argument_name] = kwargs[argument_name]
+                    if not value_casting.test_value_class(attribute_value, [annotation]):
+                        new_class_attributes[annotated_attribute] = _cast_simple(annotation)
+                    else:
+                        new_class_attributes[annotated_attribute] = attribute_value
+
+                new_class_attributes[annotated_attribute] = attribute_value
+            else:
+                # The attribute has not been supplied, which can either be ignored or trigger an exception.
+                if not self.SET_MISSING_NONE:
+                    raise Exception(f"No value supplied for mandatory keyword argument {annotated_attribute}")
+                else:
+                    new_class_attributes[annotated_attribute] = None
 
         for name, value in new_class_attributes.items():
             setattr(self, name, value)
-
-    def lol(self):
-        return "I am here to cast the lol attribute"
 
     def _instance_methods(self) -> tuple:
         return inspect.getmembers(self, predicate=inspect.ismethod)
 
     def _get_field_caster(self, field_name):
         return next(iter([method_tuple for method_tuple in self._instance_methods() if method_tuple[0] == field_name]))
-
-
-class Test(CastObject):
-    IGNORE_EXTRA = True
-    SET_DEFAULT_NONE = True
-
-    lol: Optional[int] = 123
-    optional: Optional[str] = "optional string"
-
-
-t = Test()

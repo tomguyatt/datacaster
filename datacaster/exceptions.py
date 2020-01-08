@@ -2,6 +2,10 @@ class InvalidDefaultValue(TypeError):
     pass
 
 
+class UnexpectedAttribute(ValueError):
+    pass
+
+
 class UnsupportedType(ValueError):
     pass
 
