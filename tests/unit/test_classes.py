@@ -1,15 +1,13 @@
 import re
 import pytest
 
-from dataclasses import dataclass
 from typing import Optional, List, Tuple, Any
 
-from datacaster import decorators, exceptions
+from datacaster.classes import CastDataClass
+from datacaster import exceptions
 
 
-@decorators.cast_attributes()
-@dataclass(frozen=True)
-class SimpleDataClass:
+class SimpleDataClass(CastDataClass):
     string: str
     integer: int
     floating: float
@@ -18,41 +16,44 @@ class SimpleDataClass:
     optional_string: Optional[str] = None
 
 
-@decorators.cast_attributes()
-@dataclass(frozen=True)
-class UnsupportedCastRequired:
+class UnsupportedCastRequired(CastDataClass):
     bytes: bytes
 
 
-@decorators.cast_attributes()
-@dataclass(frozen=True)
-class UnsupportedCustomType:
+class UnsupportedCustomType(CastDataClass):
     unsupported: List[Optional[str]] = None
 
 
-@decorators.cast_attributes()
-@dataclass(frozen=True)
-class InvalidDefaultValueSimple:
-    integer: int = "lol"
+class InvalidDefaultValueSimple(CastDataClass):
+    integer: int = "hello"
 
 
-@decorators.cast_attributes()
-@dataclass(frozen=True)
-class InvalidDefaultValueCustom:
-    integer: Optional[int] = "lol"
+class InvalidDefaultValueCustom(CastDataClass):
+    integer: Optional[int] = "hello"
 
 
-@decorators.cast_attributes(ignore_extra=False, set_missing_none=False)
-@dataclass(frozen=True)
-class NoMissingOrIgnore:
+class AllowMissingAndExtra(CastDataClass):
     integer: int
     string: str
 
 
-@decorators.cast_attributes()
-@dataclass(frozen=True)
-class TestSkippedAny:
+class DisallowMissingAndExtra(CastDataClass):
+    IGNORE_EXTRA = False
+    SET_MISSING_NONE = False
+
+    integer: int
+    string: str
+
+
+class TestSkippedAny(CastDataClass):
     any: Any
+
+
+class TestCustomCaster(CastDataClass):
+    string: str
+
+    def __cast_string__(self, value):
+        return f"custom cast {value}"
 
 
 @pytest.mark.parametrize(
@@ -85,7 +86,7 @@ class TestSkippedAny:
                 "string": None,
                 "integer": 123,
                 "floating": 1.0,
-                "list_string": [1.0, None, {"lol": "cat"}],
+                "list_string": [1.0, None, {"hello": "cat"}],
                 "tuple_int": ("1",),
                 "optional_string": 123,
             },
@@ -93,7 +94,7 @@ class TestSkippedAny:
                 "string": "None",
                 "integer": 123,
                 "floating": 1.0,
-                "list_string": ["1.0", "None", "{'lol': 'cat'}"],
+                "list_string": ["1.0", "None", "{'hello': 'cat'}"],
                 "tuple_int": (1,),
                 "optional_string": "123",
             },
@@ -155,7 +156,8 @@ class TestSkippedAny:
     ],
 )
 def test_cast_attributes_simple(constructor, expected_dict):
-    assert vars(SimpleDataClass(**constructor)) == expected_dict
+    instance = SimpleDataClass(**constructor)
+    assert vars(instance) == expected_dict, f"Instance {instance} has different attributes to {expected_dict}"
 
 
 def test_cast_attributes_unsupported():
@@ -197,17 +199,23 @@ def test_missing_none():
     }
 
 
-def test_no_missing_none():
-    with pytest.raises(TypeError):
-        NoMissingOrIgnore(integer=123)
-
-
-def test_no_ignore_extra():
-    with pytest.raises(KeyError):
-        NoMissingOrIgnore(integer=123, string="lol", extra="hello")
+def test_missing_and_extra():
+    assert vars(AllowMissingAndExtra(extra="hello")) == {"integer": None, "string": None}
+    with pytest.raises(exceptions.UnexpectedArgument):
+        DisallowMissingAndExtra(extra="hello")
+    with pytest.raises(exceptions.MissingArgument):
+        DisallowMissingAndExtra(string="hello")
 
 
 def test_any():
     assert vars(TestSkippedAny(any=None)) == {"any": None}
     assert vars(TestSkippedAny(any=123)) == {"any": 123}
     assert vars(TestSkippedAny(any="123")) == {"any": "123"}
+
+
+def test_custom_caster():
+    assert vars(TestCustomCaster(string="hello")) == {"string": "custom cast hello"}
+
+
+def test_repr():
+    assert repr(TestCustomCaster(string="hello")) == "TestCustomCaster(string='custom cast hello')"

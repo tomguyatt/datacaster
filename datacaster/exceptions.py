@@ -2,7 +2,11 @@ class InvalidDefaultValue(TypeError):
     pass
 
 
-class UnexpectedAttribute(ValueError):
+class UnexpectedArgument(ValueError):
+    pass
+
+
+class MissingArgument(ValueError):
     pass
 
 
