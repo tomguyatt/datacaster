@@ -12,9 +12,12 @@ logger = logging.getLogger(__name__)
 @dataclass(init=False, frozen=True)
 class CastDataClass:
 
+    @property
+    def _attribute_string(self):
+        return ', '.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
+
     def __repr__(self):
-        attribute_string = ','.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
-        return f"{self.__class__.__name__}({attribute_string})"
+        return f"{self.__class__.__name__}({self._attribute_string})"
 
     def _get_default_values(self):
         """
@@ -62,6 +65,7 @@ class CastDataClass:
         return {name: value for name, value in kwargs.items() if name not in self.__annotations__}
 
     def __init__(self, *_, **kwargs):
+        # The self attributes for these two are read only.
         SET_MISSING_NONE = getattr(self, "SET_MISSING_NONE", False)
         IGNORE_EXTRA = getattr(self, "IGNORE_EXTRA", False)
 
@@ -150,6 +154,9 @@ class CastDataClass:
                             # support basic Union[builtin, None] types, and we almost certainly don't want to cast
                             # this value to None, we should try to cast it to the other type in the Union. To get
                             # the type to cast to we need to remove the NoneType entry from the valid_types tuple.
+                            #
+                            # For the annotation typing.Union[str, None] this code will attempt to cast the value
+                            # to a string.
                             valid_type = next(
                                 filter(lambda x: x != type(None), valid_types)
                             )  # noqa (ignore E721: using isinstance is not correct here)
