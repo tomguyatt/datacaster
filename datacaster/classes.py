@@ -41,14 +41,11 @@ class CastDataClass:
     def _get_default_values(self):
         """
         Return a {name: default_value} dictionary of all attributes that have default
-        values in the class annotation. The self.__dataclass_fields__ attribute is empty
-        because annotations come from the child classes that inherit from this one.
+        values in the class annotation. We can get default values by looping over the
+        attribute names in __annotations__ and seeing if they exist in self **before**
+        we go through testing and casting attribute values.
 
-        Another way we can get default values is by looping over the attribute names in
-        __annotations__ and seeing if they exist in self **before** we go through testing
-        and casting attribute values.
-
-        class Example(CastObject):
+        class Example(CastDataClass):
             mandatory_int: int
             optional_string: Optional[str] = "I am optional!"
 
