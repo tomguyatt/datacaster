@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(init=False, frozen=True)
-class CastObject:
+class CastDataClass:
 
     def __repr__(self):
         attribute_string = ','.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
