@@ -12,6 +12,22 @@ logger = logging.getLogger(__name__)
 @dataclass(init=False, frozen=True)
 class CastDataClass:
 
+    def _instance_methods(self) -> tuple:
+        return inspect.getmembers(self, predicate=inspect.ismethod)
+
+    def _get_attribute_cast_function(self, field_name):
+        try:
+            return next(
+                iter(
+                    [
+                        method_tuple for method_tuple in self._instance_methods() if
+                        method_tuple[0] == f"__{field_name}__"
+                    ]
+                )
+            )
+        except StopIteration:
+            return None
+
     @property
     def _attribute_string(self):
         return ', '.join([f"{key}={repr(value)}" for key, value in vars(self).items()])
@@ -91,6 +107,14 @@ class CastDataClass:
             if attribute_value := kwargs.get(annotated_attribute):
                 # The attribute has been supplied, so we need to type check it and cast if
                 # necessary before adding it to the new class attributes dictionary.
+
+                # The first thing to do is see if the class instance has a registered magic
+                # method specifically for this attribute. If there is one, use it and continue.
+                if method_tuple := self._get_attribute_cast_function(annotated_attribute):
+                    method_name, method_object = method_tuple
+                    logger.debug(f"found instance method {method_name} to be used on {annotated_attribute}")
+                    new_class_attributes[annotated_attribute] = method_object(attribute_value)
+                    continue
 
                 # If the argument annotation is 'typing.Any' then chuck it straight into
                 # new_class_attributes and continue to the next one.
@@ -182,9 +206,3 @@ class CastDataClass:
 
         for name, value in new_class_attributes.items():
             setattr(self, name, value)
-
-    def _instance_methods(self) -> tuple:
-        return inspect.getmembers(self, predicate=inspect.ismethod)
-
-    def _get_field_caster(self, field_name):
-        return next(iter([method_tuple for method_tuple in self._instance_methods() if method_tuple[0] == field_name]))
