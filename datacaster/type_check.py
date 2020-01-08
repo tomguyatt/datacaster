@@ -1,7 +1,7 @@
-from . import value_casting, annotation_parsing, exceptions
+from . import value_cast, annotation_tools, exceptions
 
 
-def _check_argument_type(argument_name, argument_value, argument_annotation):
+def check_argument_type(argument_name, argument_value, argument_annotation):
     argument_value_type = repr(argument_value.__class__)
 
     def _raise_invalid_default_value():
@@ -10,10 +10,10 @@ def _check_argument_type(argument_name, argument_value, argument_annotation):
             f"a {argument_value_type}. Please change the type annotation or default value."
         )
 
-    if annotation_parsing.is_custom_type(argument_annotation):
+    if annotation_tools.is_custom_type(argument_annotation):
         try:
-            if not value_casting.test_value_class(
-                    argument_value, annotation_parsing.get_custom_type_classes(argument_annotation)
+            if not value_cast.test_value_class(
+                    argument_value, annotation_tools.get_custom_type_classes(argument_annotation)
             ):
                 _raise_invalid_default_value()
         except exceptions.UnsupportedType as e:

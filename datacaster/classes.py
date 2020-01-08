@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from . import annotation_parsing, type_checking, value_casting
+from . import annotation_tools, type_check, value_cast
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,9 @@ class CastDataClass:
 
     def _type_check_defaulted_values(self, defaulted_attributes):
         for attribute_name, attribute_value in defaulted_attributes.items():
-            type_checking._check_argument_type(
+            type_check.check_argument_type(
                 attribute_name, attribute_value,
-                annotation_parsing.parse_annotation(self.__annotations__[attribute_name])
+                annotation_tools.parse_annotation(self.__annotations__[attribute_name])
             )
 
     def _get_unexpected_attributes(self, kwargs):
@@ -103,7 +103,7 @@ class CastDataClass:
         # Start the main attribute testing & casting loop.
         for annotated_attribute, annotation in self.__annotations__.items():
 
-            annotation = annotation_parsing.parse_annotation(annotation)
+            annotation = annotation_tools.parse_annotation(annotation)
             if attribute_value := kwargs.get(annotated_attribute):
                 # The attribute has been supplied, so we need to type check it and cast if
                 # necessary before adding it to the new class attributes dictionary.
@@ -118,7 +118,7 @@ class CastDataClass:
 
                 # If the argument annotation is 'typing.Any' then chuck it straight into
                 # new_class_attributes and continue to the next one.
-                if annotation_parsing.is_any(annotation):
+                if annotation_tools.is_any(annotation):
                     logger.debug(
                         f"argument {annotated_attribute} has annotation {annotation} so "
                         f"all testing and casting will be skipped."
@@ -131,7 +131,7 @@ class CastDataClass:
                 def _cast_simple(valid_type):
                     try:
                         logger.debug(f"casting argument {annotated_attribute} to {valid_type}")
-                        return value_casting.cast_simple_type(valid_type, attribute_value, annotated_attribute)
+                        return value_cast.cast_simple_type(valid_type, attribute_value, annotated_attribute)
                     except KeyError:
                         raise exceptions.UnsupportedType(
                             f"Field '{annotated_attribute}' has supplied value '{attribute_value}' with invalid "
@@ -139,24 +139,24 @@ class CastDataClass:
                             "but casting the supplied value is not supported yet."
                         )
 
-                if annotation_parsing.is_custom_type(annotation):
+                if annotation_tools.is_custom_type(annotation):
                     logger.debug(f"argument {annotated_attribute} is custom type {annotation}")
                     # We can support making lists or tuples of simple builtin types. Work out whether this value should
                     # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
-                    if annotation_parsing.is_collection(annotation):
+                    if annotation_tools.is_collection(annotation):
 
-                        collection_type = annotation_parsing.get_origin(annotation)
-                        valid_types = annotation_parsing.get_custom_type_classes(annotation)
+                        collection_type = annotation_tools.get_origin(annotation)
+                        valid_types = annotation_tools.get_custom_type_classes(annotation)
                         cast_collection_values = []
 
                         def _cast_collection_item(value):
-                            if not value_casting.test_value_class(value, valid_types):
+                            if not value_cast.test_value_class(value, valid_types):
                                 # There will only be one because something like typing.List[str, int] isn't valid.
                                 valid_type = valid_types[0]
                                 logger.debug(
                                     f"casting argument {annotated_attribute} collection value {value} to {valid_type}"
                                 )
-                                return value_casting.cast_simple_type(valid_type, value, annotated_attribute)
+                                return value_cast.cast_simple_type(valid_type, value, annotated_attribute)
                             return value
 
                         if not isinstance(attribute_value, (list, tuple)):
@@ -172,8 +172,8 @@ class CastDataClass:
                         new_class_attributes[annotated_attribute] = collection_type(cast_collection_values)
 
                     else:
-                        valid_types = annotation_parsing.get_custom_type_classes(annotation)
-                        if not value_casting.test_value_class(attribute_value, valid_types):
+                        valid_types = annotation_tools.get_custom_type_classes(annotation)
+                        if not value_cast.test_value_class(attribute_value, valid_types):
                             # The value is not one of the types described by the custom type annotation. As we only
                             # support basic Union[builtin, None] types, and we almost certainly don't want to cast
                             # this value to None, we should try to cast it to the other type in the Union. To get
@@ -189,7 +189,7 @@ class CastDataClass:
                             new_class_attributes[annotated_attribute] = attribute_value
 
                 else:
-                    if not value_casting.test_value_class(attribute_value, [annotation]):
+                    if not value_cast.test_value_class(attribute_value, [annotation]):
                         new_class_attributes[annotated_attribute] = _cast_simple(annotation)
                     else:
                         new_class_attributes[annotated_attribute] = attribute_value
