@@ -38,37 +38,34 @@ def get_custom_type_classes(annotation) -> tuple:
     #
     def _get_annotation_args():
         valid_types = annotation.__args__
-        logger.debug(
-            f"valid types for annotation {annotation} are {annotation.__args__}"
-        )
+        logger.debug(f"valid types for annotation {annotation} are {annotation.__args__}")
         return valid_types
 
     if is_collection(annotation):
         if isinstance(annotation.__args__[0], _GenericAlias):
             raise exceptions.UnsupportedType(
-                f"Type {annotation} is not supported. Lists and tuples must only contain builtin types."
+                f"Casting to type {annotation} is not supported. Only builtin types are supported in List/Tuple."
             )
         return _get_annotation_args()
 
     elif get_origin(annotation) in {Union, Optional}:
         if len(annotation.__args__) > 2:
             raise exceptions.UnsupportedType(
-                f"Type {annotation} is not supported as it contains too many Union types."
+                f"Casting to type {annotation} is not supported as it contains too many Union types."
             )
         elif not any(
-                [t == type(None) for t in annotation.__args__]
+            [t == type(None) for t in annotation.__args__]
         ):  # noqa (ignore E721: using isinstance is not correct here)
             raise exceptions.UnsupportedType(
-                f"Type {annotation} is not supported. One of the Union types must be None."
+                f"Casting to type {annotation} is not supported. One of the Union types must be None."
             )
         elif any([isinstance(t, _GenericAlias) for t in annotation.__args__]):
             raise exceptions.UnsupportedType(
-                f"Type {annotation} is not supported. Only builtin types are "
-                "currently supported in Union and Optional custom types."
+                f"Casting to type {annotation} is not supported. Only builtin types are supported in Union/Optional."
             )
         return _get_annotation_args()
     else:
         raise exceptions.UnsupportedType(
-            f"Unsupported custom type {annotation}. Only Optional[builtin], List[builtin], and "
-            "Union[builtin, None] are supported ."
+            f"Cannot cast to unsupported type {annotation}. Only Optional[builtin], "
+            "List[builtin], and Union[builtin, None] are supported ."
         )
