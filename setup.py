@@ -1,6 +1,6 @@
 from setuptools import setup
 
-TEST_DEPENDENCIES = ["pytest==4.6.3", "pytest-cov==2.8.1", "coverage==5.0"]
+TEST_DEPENDENCIES = ["pytest==4.6.3", "pytest-cov==2.8.1", "coverage==5.0", "typeguard==2.7.1"]
 
 setup(
     name="datacaster",
@@ -19,7 +19,7 @@ setup(
         "Programming Language :: Python",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    install_requires=[],
+    install_requires=["typeguard==2.7.1"],
     tests_require=TEST_DEPENDENCIES,
     extras_require={"test": TEST_DEPENDENCIES},
     test_suite="tests",

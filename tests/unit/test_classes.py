@@ -50,23 +50,17 @@ class TestSkippedAny(CastDataClass):
 
 
 class TestCustomCaster(CastDataClass):
-    string: str
+    list_of_strings: str
 
-    def __cast_string__(self, value):
-        return f"custom cast {value}"
+    def __cast_list_of_strings__(self, value):
+        return [str(i) for i in value]
 
 
 @pytest.mark.parametrize(
     "constructor, expected_dict",
     [
         [
-            {
-                "string": 123,
-                "integer": "123",
-                "floating": "1.0",
-                "list_string": ["1", "2", "3"],
-                "tuple_int": "1",
-            },
+            {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"},
             {
                 "string": "123",
                 "integer": 123,
@@ -77,13 +71,7 @@ class TestCustomCaster(CastDataClass):
             },
         ],
         [
-            {
-                "string": 1.0,
-                "integer": 123.0,
-                "floating": 1,
-                "list_string": [1, 2, 3],
-                "tuple_int": 1.0,
-            },
+            {"string": 1.0, "integer": 123.0, "floating": 1, "list_string": [1, 2, 3], "tuple_int": 1.0},
             {
                 "string": "1.0",
                 "integer": 123,
@@ -169,16 +157,12 @@ class TestCustomCaster(CastDataClass):
 )
 def test_cast_attributes_simple(constructor, expected_dict):
     instance = SimpleDataClass(**constructor)
-    assert (
-        vars(instance) == expected_dict
-    ), f"Instance {instance} has different attributes to {expected_dict}"
+    assert vars(instance) == expected_dict, f"Instance {instance} has different attributes to {expected_dict}"
 
 
 def test_cast_attributes_unsupported():
     with pytest.raises(exceptions.UnsupportedType):
         UnsupportedCastRequired(bytes=123)
-    with pytest.raises(exceptions.UnsupportedType):
-        UnsupportedCustomType()
     UnsupportedCastRequired(bytes=b"123")
 
 
@@ -191,21 +175,15 @@ def test_invalid_default_value():
 
 def test_ignore_extra():
     assert vars(
-        SimpleDataClass(
-            string="123",
-            integer=123,
-            floating=1.0,
-            optional_string="hello",
-            extra_to_ignore="hello",
-        )
+        SimpleDataClass(string="123", integer=123, floating=1.0, optional_string="hello", extra_to_ignore="hello")
     ) == {
-        "string": "123",
-        "integer": 123,
-        "floating": 1.0,
-        "list_string": None,
-        "tuple_int": None,
-        "optional_string": "hello",
-    }
+               "string": "123",
+               "integer": 123,
+               "floating": 1.0,
+               "list_string": None,
+               "tuple_int": None,
+               "optional_string": "hello",
+           }
 
 
 def test_missing_none():
@@ -220,10 +198,7 @@ def test_missing_none():
 
 
 def test_missing_and_extra():
-    assert vars(AllowMissingAndExtra(extra="hello")) == {
-        "integer": None,
-        "string": None,
-    }
+    assert vars(AllowMissingAndExtra(extra="hello")) == {"integer": None, "string": None}
     with pytest.raises(exceptions.UnexpectedArgument):
         DisallowMissingAndExtra(extra="hello")
     with pytest.raises(exceptions.MissingArgument):
@@ -237,24 +212,15 @@ def test_any():
 
 
 def test_custom_caster():
-    assert vars(TestCustomCaster(string="hello")) == {"string": "custom cast hello"}
+    assert vars(TestCustomCaster(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
 
 
 def test_repr():
-    assert (
-        repr(TestCustomCaster(string="hello"))
-        == "TestCustomCaster(string='custom cast hello')"
-    )
+    assert repr(TestCustomCaster(list_of_strings=[1, 2, 3])) == "TestCustomCaster(list_of_strings=['1', '2', '3'])"
 
 
 def test_eq():
-    constructor = {
-        "string": 123,
-        "integer": "123",
-        "floating": "1.0",
-        "list_string": ["1", "2", "3"],
-        "tuple_int": "1",
-    }
+    constructor = {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"}
     assert SimpleDataClass(**constructor) == SimpleDataClass(**constructor)
     assert not SimpleDataClass(**constructor) == SimpleDataClass(
         **{key: value for key, value in constructor.items() if key != "string"}

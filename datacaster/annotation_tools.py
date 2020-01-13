@@ -17,16 +17,6 @@ def is_custom_type(annotation):
     return isinstance(annotation, _GenericAlias)
 
 
-def is_any(annotation):
-    try:
-        result = annotation._name.lower() == "any"
-        logger.debug(f"annotation {annotation} {'is' if result else 'is not'} 'Any'")
-        return result
-    except Exception:
-        # If it couldn't lookup the _name attribute, it isn't "Any".
-        return False
-
-
 def get_origin(annotation):
     return annotation.__origin__
 
@@ -66,7 +56,7 @@ def get_custom_type_classes(annotation) -> tuple:
                 f"Type {annotation} is not supported as it contains too many Union types."
             )
         elif not any(
-            [t == type(None) for t in annotation.__args__]
+                [t == type(None) for t in annotation.__args__]
         ):  # noqa (ignore E721: using isinstance is not correct here)
             raise exceptions.UnsupportedType(
                 f"Type {annotation} is not supported. One of the Union types must be None."
