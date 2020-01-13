@@ -10,7 +10,7 @@ class MissingArgument(ValueError):
     pass
 
 
-class UnsupportedType(ValueError):
+class UnsupportedCast(ValueError):
     pass
 
 

@@ -161,7 +161,7 @@ def test_cast_attributes_simple(constructor, expected_dict):
 
 
 def test_cast_attributes_unsupported():
-    with pytest.raises(exceptions.UnsupportedType):
+    with pytest.raises(exceptions.UnsupportedCast):
         UnsupportedCastRequired(bytes=123)
     UnsupportedCastRequired(bytes=b"123")
 

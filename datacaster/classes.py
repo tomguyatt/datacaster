@@ -174,7 +174,7 @@ class CastDataClass:
                         valid_type, attribute_value, annotated_attribute
                     )
                 except KeyError:
-                    raise exceptions.UnsupportedType(
+                    raise exceptions.UnsupportedCast(
                         f"Field '{annotated_attribute}' has supplied value '{attribute_value}' with invalid "
                         f"type {attribute_value.__class__}. A {annotation} type value is required "
                         "but casting the supplied value is not supported yet."
