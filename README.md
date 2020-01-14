@@ -3,7 +3,7 @@
 
 # datacaster
 
-Type-check & cast attributes on class instance creation.
+Type-check & cast attributes on class instance creation. Uses the excellent `typeguard` project (https://github.com/agronholm/typeguard).
 
 ## Why
 
@@ -51,7 +51,7 @@ During instance creation, the `CastDataClass.__init__` will:
 
 ## Examples
 
-A class that describes an Active Directory. For simplicity a lot of 'useful' fields have been left out of the example.
+A class that describes an Active Directory user. For simplicity a lot of 'useful' fields have been left out of the example.
 
 ```python
 from typing import Optional, List
