@@ -3,7 +3,7 @@
 
 # datacaster
 
-Runtime typechecking & attribute casting during class instance creation. Uses the excellent `typeguard` project for runtime type-checking (https://github.com/agronholm/typeguard).
+Runtime type-checking & attribute casting during class instance creation. Uses the excellent `typeguard` project (https://github.com/agronholm/typeguard).
 
 ## Why
 
