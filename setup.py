@@ -1,11 +1,16 @@
 from setuptools import setup
 
-TEST_DEPENDENCIES = ["pytest==4.6.3", "pytest-cov==2.8.1", "coverage==5.0", "typeguard==2.7.1"]
+TEST_DEPENDENCIES = [
+    "pytest==4.6.3",
+    "pytest-cov==2.8.1",
+    "coverage==5.0",
+    "typeguard==2.7.1",
+]
 
 setup(
     name="datacaster",
     description="Cast class attributes on instantiation.",
-    version="0.4.0",
+    version="0.4.1",
     author="Tom Guyatt",
     maintainer="Tom Guyatt",
     author_email="tomguyatt@gmail.com",

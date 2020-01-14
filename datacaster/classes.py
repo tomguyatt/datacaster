@@ -1,8 +1,6 @@
 import inspect
 import logging
 
-from typing import Optional
-
 from typeguard import check_type
 
 from . import annotation_tools, value_cast, exceptions
@@ -148,7 +146,9 @@ class CastDataClass:
                 new_class_attributes[annotated_attribute] = attribute_value
                 continue
             except TypeError:
-                logger.debug(f"attribute {annotated_attribute} is not of the correct type, casting will be attempted")
+                logger.debug(
+                    f"attribute {annotated_attribute} is not of the correct type, casting will be attempted"
+                )
 
             # Type-checking has failed, so start working out how to cast the value to the correct
             # type. The first thing to do is see if the class instance has a registered magic method
@@ -230,9 +230,7 @@ class CastDataClass:
                     valid_type = next(
                         filter(lambda x: x != type(None), valid_types)
                     )  # noqa (ignore E721: using isinstance is not correct here)
-                    new_class_attributes[annotated_attribute] = _cast_simple(
-                        valid_type
-                    )
+                    new_class_attributes[annotated_attribute] = _cast_simple(valid_type)
 
             else:
                 # The annotation is not something from the typing module.
