@@ -2,61 +2,100 @@
 
 
 # datacaster
-Cast python dataclass arguments on instantiation
 
+Type-check & cast attributes on class instance creation.
+
+## Why
+
+#### 1) Single point of config
+
+Having written integrations for multiple third-party APIs and applications, I wanted an easy way to describe the following about each 'endpoint' object I was interested in:
+
+- Record name
+- Record fields
+- Field types
+
+#### 2) Ignoring superfluous data
+
+Sometimes APIs give you way more information than you care about. I was keen to avoid writing comprehensions that iterate over a JSON response, and only pass fields to a constructor if the field name is in our field list.
+
+#### 3) Incomplete data/inconsistent APIs
+
+On the other hand - sometimes an API will not return a full object, depending on which operation you're performing (looking at you, Office365 Graph API). Again I wanted to avoid comprehensions that use `.get()` every time when passing fields to the constructor. It's a repeated pattern in the work I've been doing and basically boilerplate.
+
+#### 4) Run time type-checking
+
+Always useful.
+
+#### 5) Custom casting for special attributes
+
+I wanted a simple way to define functions that mutate/cast special attributes on instantiation. The `ObjectGUID` attribute in Active Directory, for example.
+
+## What
+
+Any class that inherits from `datacaster.classes.CastDataClass` **must**:
+
+- Use the same annotations syntax you'd use in a dataclass.
+- **Not** have an `__init__` defined.
+
+During instance creation, the `CastDataClass.__init__` will:
+
+1) Type-check the default values of any attributes that will **fall back to their default value**.
+2) Unless the class annotation contains `IGNORE_EXTRA=False`, any extra attributes supplied to the constructor will be ignored.
+3) Unless the class annotation contains `SET_MISSING_NONE=False`, any missing attributes will be set to None, regardless of their annotation.
+4) Type-check all attributes passed to the constructor. If any attribute fails the type-check, the following will happen:
+
+    - **If** an instance method exists for the attribute (`__cast__[attribute_name]__`), the value will be passed into that function, and the return value will be used in the class instance.
+    
+    - **Else** if the value is a value we can cast automatically, this will be attempted.
 
 ## Examples
 
-A simple dataclass with `int`, `str`, `float`, and `Optional[int]` attributes.
-
-The dataclass is decorated with `datacaster.decorators.cast_attributes`.
+A class that describes an Active Directory. For simplicity a lot of 'useful' fields have been left out of the example.
 
 ```python
+from typing import Optional, List
 
-from typing import Optional
-from dataclasses import dataclass
-
-from datacaster.decorators import cast_attributes
-
-@cast_attributes
-@dataclass
-class TestClass:
-    string: str
-    integer: int
-    floating: float
-    optional_int: Optional[int] = None
-```
+from datacaster.classes import CastDataClass
 
 
-When an instance of `TestClass` is created, the supplied arguments are type-checked and cast if necessary:
+class User(CastDataClass):
+    adminCount: Optional[int]
+    badPwdCount: Optional[int]
+    carLicense: List[str]
+    cn: Optional[str]
+    countryCode: Optional[str]
+    displayName: Optional[str]
+    distinguishedName: str
+    givenName: Optional[str]
+    info: Optional[str]
+    lastLogoff: Optional[str]
+    logonCount: Optional[int]
+    mail: Optional[str]
+    manager: Optional[str]
+    memberOf: List[str]
+    name: Optional[str]
+    objectCategory: str
+    objectClass: List[str]
+    objectGUID: str
+    objectSid: str
+    primaryGroupID: int
+    sAMAccountName: str
+    sAMAccountType: Optional[int]
+    sn: Optional[str]
+    userAccountControl: int
+    userPrincipalName: str
+    
+    def __cast_objectGUID__(self, value):
+        # This will be called when the __init__ is inspecting the objectGUID
+        # attribute. Here you can operate on the value passed to the constructor
+        # and return whatever you need.
+        return value
+    
+    def __cast_objectSid__(self, value):
+        # As above, this will be called when the __init__ is inspecting the objectSid
+        # attribute. Here you can operate on the value passed to the constructor and
+        # return whatever you need.
+        return value
 
-```python
-In : TestClass(string=123, integer="123", floating=1)
-
-Out: TestClass(string='123', integer=123, floating=1.0, optional_int=None)
-```
-
-```python
-In : TestClass(string=None, integer=1.0, floating=1, optional_int="1")
-
-Out: TestClass(string='None', integer=1, floating=1.0, optional_int=1)
-```
-
-
-Default values with invalid types will also be caught. This dataclass has a single keyword argument whose default value does not match the annotation:
-
-```python
-@cast_attributes
-@dataclass
-class TestClass:
-    optional_int: Optional[int] = "hello"
-
-
-print(TestClass())
-```
-
-When running the code above, the following exception is raised:
-
-```console
-InvalidDefaultValue: Default value 'hello' for field 'optional_int' should be type typing.Union[int, NoneType] but is a <class 'str'>. Please change the dataclass field type annotation or default value.
 ```
