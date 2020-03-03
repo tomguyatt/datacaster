@@ -24,21 +24,35 @@ class CastDataClass:
     def _instance_methods(self) -> tuple:
         return inspect.getmembers(self, predicate=inspect.ismethod)
 
-    def _get_cast_map_callable(self, field_name):
+    def _get_type_map_function(self, type_annotation):
         try:
-            callable = self.__cast_map__[field_name]
+            callable = self.__type_cast_functions__[type_annotation]
         except (AttributeError, KeyError):
-            # Either no cast map is defined or the field isn't in there.
+            # Either no type functions are defined or the type isn't in there.
             return None
         param_count = len(inspect.signature(callable).parameters)
         if param_count != 1:
             raise exceptions.CastFailed(
-                f"Cast function for field '{field_name}' must take 1 parameter. "
-                f"The supplied callable expects {param_count}."
+                f"Function for type '{type_annotation}' in __type_cast_functions__ should expect "
+                f"1 parameter, but the supplied functions expects {param_count} parameters."
             )
         return callable
 
-    def _get_instance_cast_method(self, field_name):
+    def _get_field_map_function(self, field_name):
+        try:
+            callable = self.__field_cast_functions__[field_name]
+        except (AttributeError, KeyError):
+            # Either no field functions are defined or the field isn't in there.
+            return None
+        param_count = len(inspect.signature(callable).parameters)
+        if param_count != 1:
+            raise exceptions.CastFailed(
+                f"Function for field '{field_name}' in __field_cast_functions__ should expect "
+                f"1 parameter, but the supplied functions expects {param_count} parameters."
+            )
+        return callable
+
+    def _get_field_class_method(self, field_name):
         try:
             return next(
                 iter(
@@ -51,7 +65,6 @@ class CastDataClass:
             )
         except StopIteration:
             return None
-
 
     def _get_default_values(self):
         """
@@ -159,38 +172,72 @@ class CastDataClass:
             try:
                 check_type(annotated_attribute, attribute_value, annotation)
                 new_class_attributes[annotated_attribute] = attribute_value
+
+                ###############################
+                # Type-checking has succeeded #
+                ###############################
                 continue
+
             except TypeError:
                 logger.debug(
                     f"attribute {annotated_attribute} is not of the correct type, casting will be attempted"
                 )
 
-            # Type-checking has failed, so start working out how to cast the value to the correct
-            # type. The first thing to do is see if the class instance has a registered magic method
-            # specifically for this attribute.
-            if all([self._get_cast_map_callable(annotated_attribute), self._get_instance_cast_method(annotated_attribute)]):
+            ############################
+            # Type-checking has failed #
+            ############################
+
+            # If a cast function exists for this field in both the __field_cast_functions__ dictionary and as a class
+            # instance method, raise an exception to avoid any potential confusion as to which of them was executed.
+            if all(
+                [
+                    self._get_field_class_method(annotated_attribute),
+                    self._get_field_map_function(annotated_attribute),
+                ]
+            ):
                 raise exceptions.MultipleCastDefinitions(
-                    f"Multiple cast definitions for '{annotated_attribute}'. Field has value in "
-                    f"__cast_map__ and instance method __cast_{annotated_attribute}__."
+                    f"Multiple cast definitions for field '{annotated_attribute}'. Found corresponding value in "
+                    f"__cast_map__ and class instance method __cast_{annotated_attribute}__."
                 )
-            if method_tuple := self._get_instance_cast_method(annotated_attribute):
-                method_name, method_object = method_tuple
+
+            # Look for a field instance method first.
+            if instance_method_tuple := self._get_field_class_method(
+                annotated_attribute
+            ):
+                instance_method_name, instance_method = instance_method_tuple
                 logger.debug(
-                    f"found instance method {method_name} to be used on {annotated_attribute}"
+                    f"found instance method {instance_method_name} to be used on {annotated_attribute}"
                 )
-                new_class_attributes[annotated_attribute] = method_object(
+                new_class_attributes[annotated_attribute] = instance_method(
                     attribute_value
                 )
                 continue
-            elif cast_map_callable := self._get_cast_map_callable(annotated_attribute):
+
+            # Otherwise look for a field cast function in __field_cast_functions__.
+            elif field_map_function := self._get_field_map_function(
+                annotated_attribute
+            ):
                 logger.debug(
-                    f"found cast map callable {cast_map_callable} to be used on {annotated_attribute}"
+                    f"found cast map callable {field_map_function} to be used on {annotated_attribute}"
                 )
-                new_class_attributes[annotated_attribute] = cast_map_callable(attribute_value)
+                new_class_attributes[annotated_attribute] = field_map_function(
+                    attribute_value
+                )
                 continue
 
-            # This can be called from multiple code paths, so define it once inside
-            # the scope that contains the annotation, name, and value of each argument.
+            # If nothing is defined specifically for this field, see if there's a cast function defined for the
+            # type annotation instead in __type_cast_functions__.
+            elif type_map_function := self._get_type_map_function(annotation):
+                logger.debug(
+                    f"found type map function {field_map_function} to be used on {annotated_attribute} with type {annotation}"
+                )
+                new_class_attributes[annotated_attribute] = type_map_function(
+                    attribute_value
+                )
+                continue
+
+            # This can be called from multiple code paths, so define it once inside the scope that contains the
+            # annotation, name, and value of each argument.
             def _cast_simple(valid_type):
                 try:
                     logger.debug(

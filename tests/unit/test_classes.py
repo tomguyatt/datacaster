@@ -16,69 +16,17 @@ class SimpleDataClass(CastDataClass):
     optional_string: Optional[str] = None
 
 
-class UnsupportedCastRequired(CastDataClass):
-    bytes: bytes
-
-
-class UnsupportedCustomType(CastDataClass):
-    unsupported: List[Optional[str]] = None
-
-
-class InvalidDefaultValueSimple(CastDataClass):
-    integer: int = "hello"
-
-
-class InvalidDefaultValueCustom(CastDataClass):
-    integer: Optional[int] = "hello"
-
-
-class AllowMissingAndExtra(CastDataClass):
-    integer: int
-    string: str
-
-
-class DisallowMissingAndExtra(CastDataClass):
-    IGNORE_EXTRA = False
-    SET_MISSING_NONE = False
-
-    integer: int
-    string: str
-
-
-class TestSkippedAny(CastDataClass):
-    any: Any
-
-
-class TestCustomCasterInstanceMethod(CastDataClass):
-    list_of_strings: str
-
-    def __cast_list_of_strings__(self, value):
-        return [str(i) for i in value]
-
-
-class TestCustomCasterMap(CastDataClass):
-    __cast_map__ = {"list_of_strings": lambda x: [str(i) for i in x]}
-    list_of_strings: str
-
-
-class TestInvalidCallable(CastDataClass):
-    __cast_map__ = {"list_of_strings": lambda x, y, z: [str(i) for i in x]}
-    list_of_strings: str
-
-
-class TestDuplicateCasters(CastDataClass):
-    __cast_map__ = {"list_of_strings": lambda x: [str(i) for i in x]}
-    list_of_strings: str
-
-    def __cast_list_of_strings__(self, value):
-        return [str(i) for i in value]
-
-
 @pytest.mark.parametrize(
     "constructor, expected_dict",
     [
         [
-            {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"},
+            {
+                "string": 123,
+                "integer": "123",
+                "floating": "1.0",
+                "list_string": ["1", "2", "3"],
+                "tuple_int": "1",
+            },
             {
                 "string": "123",
                 "integer": 123,
@@ -89,7 +37,13 @@ class TestDuplicateCasters(CastDataClass):
             },
         ],
         [
-            {"string": 1.0, "integer": 123.0, "floating": 1, "list_string": [1, 2, 3], "tuple_int": 1.0},
+            {
+                "string": 1.0,
+                "integer": 123.0,
+                "floating": 1,
+                "list_string": [1, 2, 3],
+                "tuple_int": 1.0,
+            },
             {
                 "string": "1.0",
                 "integer": 123,
@@ -175,16 +129,27 @@ class TestDuplicateCasters(CastDataClass):
 )
 def test_cast_attributes_simple(constructor, expected_dict):
     instance = SimpleDataClass(**constructor)
-    assert vars(instance) == expected_dict, f"Instance {instance} has different attributes to {expected_dict}"
+    assert (
+        vars(instance) == expected_dict
+    ), f"Instance {instance} has different attributes to {expected_dict}"
 
 
 def test_cast_attributes_unsupported():
+    class UnsupportedCastRequired(CastDataClass):
+        bytes: bytes
+
     with pytest.raises(exceptions.UnsupportedCast):
         UnsupportedCastRequired(bytes=123)
     UnsupportedCastRequired(bytes=b"123")
 
 
 def test_invalid_default_value():
+    class InvalidDefaultValueCustom(CastDataClass):
+        integer: Optional[int] = "hello"
+
+    class InvalidDefaultValueSimple(CastDataClass):
+        integer: int = "hello"
+
     with pytest.raises(exceptions.InvalidDefaultValue):
         InvalidDefaultValueCustom()
     with pytest.raises(exceptions.InvalidDefaultValue):
@@ -193,7 +158,13 @@ def test_invalid_default_value():
 
 def test_ignore_extra():
     assert vars(
-        SimpleDataClass(string="123", integer=123, floating=1.0, optional_string="hello", extra_to_ignore="hello")
+        SimpleDataClass(
+            string="123",
+            integer=123,
+            floating=1.0,
+            optional_string="hello",
+            extra_to_ignore="hello",
+        )
     ) == {
         "string": "123",
         "integer": 123,
@@ -216,7 +187,21 @@ def test_missing_none():
 
 
 def test_missing_and_extra():
-    assert vars(AllowMissingAndExtra(extra="hello")) == {"integer": None, "string": None}
+    class AllowMissingAndExtra(CastDataClass):
+        integer: int
+        string: str
+
+    class DisallowMissingAndExtra(CastDataClass):
+        IGNORE_EXTRA = False
+        SET_MISSING_NONE = False
+
+        integer: int
+        string: str
+
+    assert vars(AllowMissingAndExtra(extra="hello")) == {
+        "integer": None,
+        "string": None,
+    }
     with pytest.raises(exceptions.UnexpectedArgument):
         DisallowMissingAndExtra(extra="hello")
     with pytest.raises(exceptions.MissingArgument):
@@ -224,37 +209,103 @@ def test_missing_and_extra():
 
 
 def test_any():
+    class TestSkippedAny(CastDataClass):
+        any: Any
+
     assert vars(TestSkippedAny(any=None)) == {"any": None}
     assert vars(TestSkippedAny(any=123)) == {"any": 123}
     assert vars(TestSkippedAny(any="123")) == {"any": "123"}
 
 
-def test_custom_caster_instance_method():
-    assert vars(TestCustomCasterInstanceMethod(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+def test_field_instance_method():
+    class FieldInstanceMethod(CastDataClass):
+        list_of_strings: str
 
-def test_custom_caster_map():
-    assert vars(TestCustomCasterMap(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+        def __cast_list_of_strings__(self, value):
+            return [str(i) for i in value]
+
+    assert vars(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
+
+
+def test_field_map_function():
+    class FieldMap(CastDataClass):
+        __field_cast_functions__ = {"list_of_strings": lambda x: [str(i) for i in x]}
+        list_of_strings: str
+
+    assert vars(FieldMap(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
+
+
+def test_type_map_function():
+    class TypeMap(CastDataClass):
+        __type_cast_functions__ = {List[str]: lambda x: [str(i) for i in x]}
+        list_of_strings: List[str]
+
+    assert vars(TypeMap(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
+
 
 def test_duplicate_casters():
-    with pytest.raises(exceptions.MultipleCastDefinitions):
-        TestDuplicateCasters(list_of_strings=[1, 2, 3])
+    class DuplicateCasters(CastDataClass):
+        __field_cast_functions__ = {"list_of_strings": lambda x: [str(i) for i in x]}
+        list_of_strings: str
 
-def test_invalid_callable():
+        def __cast_list_of_strings__(self, value):
+            return [str(i) for i in value]
+
+    with pytest.raises(exceptions.MultipleCastDefinitions):
+        DuplicateCasters(list_of_strings=[1, 2, 3])
+
+
+def test_invalid_callables():
+    class InvalidFieldFunction(CastDataClass):
+        __field_cast_functions__ = {
+            "list_of_strings": lambda x, y, z: [str(i) for i in x]
+        }
+        list_of_strings: List[str]
+
+    class InvalidTypeFunction(CastDataClass):
+        __type_cast_functions__ = {List[str]: lambda x, y, z: [str(i) for i in x]}
+        list_of_strings: List[str]
+
     with pytest.raises(exceptions.CastFailed):
-        TestInvalidCallable(list_of_strings=[1, 2, 3])
+        InvalidFieldFunction(list_of_strings=[1, 2, 3])
+
+    with pytest.raises(exceptions.CastFailed):
+        InvalidTypeFunction(list_of_strings=[1, 2, 3])
 
 
 def test_repr():
+    class FieldInstanceMethod(CastDataClass):
+        list_of_strings: str
+
+        def __cast_list_of_strings__(self, value):
+            return [str(i) for i in value]
+
     assert (
-        repr(TestCustomCasterInstanceMethod(list_of_strings=[1, 2, 3]))
-        == "TestCustomCasterInstanceMethod(list_of_strings=['1', '2', '3'])"
+        repr(FieldInstanceMethod(list_of_strings=[1, 2, 3]))
+        == "FieldInstanceMethod(list_of_strings=['1', '2', '3'])"
     )
 
 
 def test_eq():
-    constructor = {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"}
+    class TypeMap(CastDataClass):
+        __type_cast_functions__ = {List[str]: lambda x: [str(i) for i in x]}
+        list_of_strings: List[str]
+
+    constructor = {
+        "string": 123,
+        "integer": "123",
+        "floating": "1.0",
+        "list_string": ["1", "2", "3"],
+        "tuple_int": "1",
+    }
     assert SimpleDataClass(**constructor) == SimpleDataClass(**constructor)
     assert not SimpleDataClass(**constructor) == SimpleDataClass(
         **{key: value for key, value in constructor.items() if key != "string"}
     )
-    assert not SimpleDataClass(**constructor) == TestCustomCasterInstanceMethod(string="hello")
+    assert not SimpleDataClass(**constructor) == TypeMap(list_of_strings=[1, 2, 3])
