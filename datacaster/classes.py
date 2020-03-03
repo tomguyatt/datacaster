@@ -33,7 +33,7 @@ class CastDataClass:
         param_count = len(inspect.signature(callable).parameters)
         if param_count != 1:
             raise exceptions.CastFailed(
-                f"Function for field '{field_name}' in __type_cast_functions__ should expect "
+                f"Function for type '{type_annotation}' in __type_cast_functions__ should expect "
                 f"1 parameter, but the supplied functions expects {param_count} parameters."
             )
         return callable
