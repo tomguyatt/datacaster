@@ -16,3 +16,6 @@ class UnsupportedCast(ValueError):
 
 class CastFailed(ValueError):
     pass
+
+class MultipleCastDefinitions(Exception):
+    pass
