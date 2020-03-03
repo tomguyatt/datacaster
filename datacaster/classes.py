@@ -172,15 +172,23 @@ class CastDataClass:
             try:
                 check_type(annotated_attribute, attribute_value, annotation)
                 new_class_attributes[annotated_attribute] = attribute_value
+
+                ###############################
+                # Type-checking has succeeded #
+                ###############################
                 continue
+
             except TypeError:
                 logger.debug(
                     f"attribute {annotated_attribute} is not of the correct type, casting will be attempted"
                 )
 
-            # Type-checking has failed, so start working out how to cast the value to the correct
-            # type. The first thing to do is see if the class instance has a registered magic method
-            # specifically for this attribute.
+            ############################
+            # Type-checking has failed #
+            ############################
+
+            # If a cast function exists for this field in both the __field_cast_functions__ dictionary and as a class
+            # instance method, raise an exception to avoid any potential confusion as to which of them was executed.
             if all(
                 [
                     self._get_field_class_method(annotated_attribute),
@@ -191,6 +199,8 @@ class CastDataClass:
                     f"Multiple cast definitions for field '{annotated_attribute}'. Found corresponding value in "
                     f"__cast_map__ and class instance method __cast_{annotated_attribute}__."
                 )
+
+            # Look for a field instance method first.
             if instance_method_tuple := self._get_field_class_method(
                 annotated_attribute
             ):
@@ -202,6 +212,8 @@ class CastDataClass:
                     attribute_value
                 )
                 continue
+
+            # Otherwise look for a field cast function in __field_cast_functions__.
             elif field_map_function := self._get_field_map_function(
                 annotated_attribute
             ):
@@ -212,6 +224,9 @@ class CastDataClass:
                     attribute_value
                 )
                 continue
+
+            # If nothing is defined specifically for this field, see if there's a cast function defined for the
+            # type annotation instead in __type_cast_functions__.
             elif type_map_function := self._get_type_map_function(annotation):
                 logger.debug(
                     f"found type map function {field_map_function} to be used on {annotated_attribute} with type {annotation}"
@@ -221,8 +236,8 @@ class CastDataClass:
                 )
                 continue
 
-            # This can be called from multiple code paths, so define it once inside
-            # the scope that contains the annotation, name, and value of each argument.
+            # This can be called from multiple code paths, so define it once inside the scope that contains the
+            # annotation, name, and value of each argument.
             def _cast_simple(valid_type):
                 try:
                     logger.debug(

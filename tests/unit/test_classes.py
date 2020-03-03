@@ -20,7 +20,13 @@ class SimpleDataClass(CastDataClass):
     "constructor, expected_dict",
     [
         [
-            {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"},
+            {
+                "string": 123,
+                "integer": "123",
+                "floating": "1.0",
+                "list_string": ["1", "2", "3"],
+                "tuple_int": "1",
+            },
             {
                 "string": "123",
                 "integer": 123,
@@ -31,7 +37,13 @@ class SimpleDataClass(CastDataClass):
             },
         ],
         [
-            {"string": 1.0, "integer": 123.0, "floating": 1, "list_string": [1, 2, 3], "tuple_int": 1.0},
+            {
+                "string": 1.0,
+                "integer": 123.0,
+                "floating": 1,
+                "list_string": [1, 2, 3],
+                "tuple_int": 1.0,
+            },
             {
                 "string": "1.0",
                 "integer": 123,
@@ -117,7 +129,9 @@ class SimpleDataClass(CastDataClass):
 )
 def test_cast_attributes_simple(constructor, expected_dict):
     instance = SimpleDataClass(**constructor)
-    assert vars(instance) == expected_dict, f"Instance {instance} has different attributes to {expected_dict}"
+    assert (
+        vars(instance) == expected_dict
+    ), f"Instance {instance} has different attributes to {expected_dict}"
 
 
 def test_cast_attributes_unsupported():
@@ -144,7 +158,13 @@ def test_invalid_default_value():
 
 def test_ignore_extra():
     assert vars(
-        SimpleDataClass(string="123", integer=123, floating=1.0, optional_string="hello", extra_to_ignore="hello")
+        SimpleDataClass(
+            string="123",
+            integer=123,
+            floating=1.0,
+            optional_string="hello",
+            extra_to_ignore="hello",
+        )
     ) == {
         "string": "123",
         "integer": 123,
@@ -178,7 +198,10 @@ def test_missing_and_extra():
         integer: int
         string: str
 
-    assert vars(AllowMissingAndExtra(extra="hello")) == {"integer": None, "string": None}
+    assert vars(AllowMissingAndExtra(extra="hello")) == {
+        "integer": None,
+        "string": None,
+    }
     with pytest.raises(exceptions.UnexpectedArgument):
         DisallowMissingAndExtra(extra="hello")
     with pytest.raises(exceptions.MissingArgument):
@@ -201,7 +224,9 @@ def test_field_instance_method():
         def __cast_list_of_strings__(self, value):
             return [str(i) for i in value]
 
-    assert vars(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+    assert vars(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
 
 
 def test_field_map_function():
@@ -209,7 +234,9 @@ def test_field_map_function():
         __field_cast_functions__ = {"list_of_strings": lambda x: [str(i) for i in x]}
         list_of_strings: str
 
-    assert vars(FieldMap(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+    assert vars(FieldMap(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
 
 
 def test_type_map_function():
@@ -217,7 +244,9 @@ def test_type_map_function():
         __type_cast_functions__ = {List[str]: lambda x: [str(i) for i in x]}
         list_of_strings: List[str]
 
-    assert vars(TypeMap(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+    assert vars(TypeMap(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
 
 
 def test_duplicate_casters():
@@ -234,7 +263,9 @@ def test_duplicate_casters():
 
 def test_invalid_callables():
     class InvalidFieldFunction(CastDataClass):
-        __field_cast_functions__ = {"list_of_strings": lambda x, y, z: [str(i) for i in x]}
+        __field_cast_functions__ = {
+            "list_of_strings": lambda x, y, z: [str(i) for i in x]
+        }
         list_of_strings: List[str]
 
     class InvalidTypeFunction(CastDataClass):
@@ -256,17 +287,23 @@ def test_repr():
             return [str(i) for i in value]
 
     assert (
-        repr(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == "FieldInstanceMethod(list_of_strings=['1', '2', '3'])"
+        repr(FieldInstanceMethod(list_of_strings=[1, 2, 3]))
+        == "FieldInstanceMethod(list_of_strings=['1', '2', '3'])"
     )
 
 
 def test_eq():
-
     class TypeMap(CastDataClass):
         __type_cast_functions__ = {List[str]: lambda x: [str(i) for i in x]}
         list_of_strings: List[str]
 
-    constructor = {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"}
+    constructor = {
+        "string": 123,
+        "integer": "123",
+        "floating": "1.0",
+        "list_string": ["1", "2", "3"],
+        "tuple_int": "1",
+    }
     assert SimpleDataClass(**constructor) == SimpleDataClass(**constructor)
     assert not SimpleDataClass(**constructor) == SimpleDataClass(
         **{key: value for key, value in constructor.items() if key != "string"}
