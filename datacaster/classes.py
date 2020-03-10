@@ -229,7 +229,7 @@ class CastDataClass:
             # type annotation instead in __type_cast_functions__.
             elif type_map_function := self._get_type_map_function(annotation):
                 logger.debug(
-                    f"found type map function {field_map_function} to be used on {annotated_attribute} with type {annotation}"
+                    f"found type map function {type_map_function} to be used on {annotated_attribute} with type {annotation}"
                 )
                 new_class_attributes[annotated_attribute] = type_map_function(
                     attribute_value
