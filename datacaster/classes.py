@@ -21,36 +21,24 @@ class CastDataClass:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._attribute_string})"
 
-    def _get_instance_methods(self) -> tuple:
-        return inspect.getmembers(self, predicate=inspect.ismethod)
+    def _test_cast_function_maps(self):
+        invalid_type_cast = {
+            annotation: function
+            for annotation, function in getattr(self, "__type_cast_functions__", {}).items()
+            if len(inspect.signature(function).parameters) != 1
+        }
+        invalid_field_cast = {
+            field: function
+            for field, function in getattr(self, "__field_cast_functions__", {}).items()
+            if len(inspect.signature(function).parameters) != 1
+        }
 
-    def _get_type_map_function(self, type_annotation):
-        try:
-            callable = self.__type_cast_functions__[type_annotation]
-        except (AttributeError, KeyError):
-            # Either no type functions are defined or the type isn't in there.
-            return None
-        param_count = len(inspect.signature(callable).parameters)
-        if param_count != 1:
-            raise exceptions.CastFailed(
-                f"Function for type '{type_annotation}' in __type_cast_functions__ should expect "
-                f"1 parameter, but the supplied functions expects {param_count} parameters."
+        if all_invalid := {**invalid_type_cast, **invalid_field_cast}:
+            invalid_keys = ", ".join((str(v) for v in all_invalid.keys()))
+            raise exceptions.UnsupportedCast(
+                "Functions in __type_cast_functions__ and __field_cast_functions__ must take 1 parameter. "
+                f"The functions supplied with the following fields/annotations do not: {invalid_keys}"
             )
-        return callable
-
-    def _get_field_map_function(self, field_name):
-        try:
-            callable = self.__field_cast_functions__[field_name]
-        except (AttributeError, KeyError):
-            # Either no field functions are defined or the field isn't in there.
-            return None
-        param_count = len(inspect.signature(callable).parameters)
-        if param_count != 1:
-            raise exceptions.CastFailed(
-                f"Function for field '{field_name}' in __field_cast_functions__ should expect "
-                f"1 parameter, but the supplied functions expects {param_count} parameters."
-            )
-        return callable
 
     def _get_field_class_method(self, field_name, instance_methods):
         try:
@@ -130,12 +118,13 @@ class CastDataClass:
         # The self attributes for these two are read only.
         SET_MISSING_NONE = getattr(self, "SET_MISSING_NONE", True)
         IGNORE_EXTRA = getattr(self, "IGNORE_EXTRA", True)
-        INSTANCE_METHODS = self._get_instance_methods()
+        INSTANCE_METHODS = inspect.getmembers(self, predicate=inspect.ismethod)
 
         # Type check the default values of any attributes that will be using
         # default values. We want to do this as soon as possible.
         defaulted_attributes = self._get_defaulted_attributes(kwargs)
         self._type_check_defaulted_values(defaulted_attributes)
+        self._test_cast_function_maps()
 
         # Start the new attribute dictionary with all arguments using their default value.
         new_class_attributes = defaulted_attributes
@@ -193,7 +182,7 @@ class CastDataClass:
             if all(
                 [
                     self._get_field_class_method(annotated_attribute, INSTANCE_METHODS),
-                    self._get_field_map_function(annotated_attribute),
+                    getattr(self, "__field_cast_functions__", {}).get(annotated_attribute)
                 ]
             ):
                 raise exceptions.MultipleCastDefinitions(
@@ -215,9 +204,7 @@ class CastDataClass:
                 continue
 
             # Otherwise look for a field cast function in __field_cast_functions__.
-            elif field_map_function := self._get_field_map_function(
-                annotated_attribute
-            ):
+            elif field_map_function := getattr(self, "__field_cast_functions__", {}).get(annotated_attribute):
                 logger.debug(
                     f"found cast map callable {field_map_function.__name__} to be used on {annotated_attribute}"
                 )
@@ -228,7 +215,7 @@ class CastDataClass:
 
             # If nothing is defined specifically for this field, see if there's a cast function defined for the
             # type annotation instead in __type_cast_functions__.
-            elif type_map_function := self._get_type_map_function(annotation):
+            elif type_map_function := getattr(self, "__type_cast_functions__", {}).get(annotation):
                 logger.debug(
                     f"found type map function {type_map_function.__name__} to be used on {annotated_attribute} with type {annotation}"
                 )

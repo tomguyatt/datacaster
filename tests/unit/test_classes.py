@@ -272,10 +272,10 @@ def test_invalid_callables():
         __type_cast_functions__ = {List[str]: lambda x, y, z: [str(i) for i in x]}
         list_of_strings: List[str]
 
-    with pytest.raises(exceptions.CastFailed):
+    with pytest.raises(exceptions.UnsupportedCast):
         InvalidFieldFunction(list_of_strings=[1, 2, 3])
 
-    with pytest.raises(exceptions.CastFailed):
+    with pytest.raises(exceptions.UnsupportedCast):
         InvalidTypeFunction(list_of_strings=[1, 2, 3])
 
 
