@@ -21,7 +21,7 @@ class CastDataClass:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._attribute_string})"
 
-    def _instance_methods(self) -> tuple:
+    def _get_instance_methods(self) -> tuple:
         return inspect.getmembers(self, predicate=inspect.ismethod)
 
     def _get_type_map_function(self, type_annotation):
@@ -52,13 +52,13 @@ class CastDataClass:
             )
         return callable
 
-    def _get_field_class_method(self, field_name):
+    def _get_field_class_method(self, field_name, instance_methods):
         try:
             return next(
                 iter(
                     [
                         method_tuple
-                        for method_tuple in self._instance_methods()
+                        for method_tuple in instance_methods
                         if method_tuple[0] == f"__cast_{field_name}__"
                     ]
                 )
@@ -130,6 +130,7 @@ class CastDataClass:
         # The self attributes for these two are read only.
         SET_MISSING_NONE = getattr(self, "SET_MISSING_NONE", True)
         IGNORE_EXTRA = getattr(self, "IGNORE_EXTRA", True)
+        INSTANCE_METHODS = self._get_instance_methods()
 
         # Type check the default values of any attributes that will be using
         # default values. We want to do this as soon as possible.
@@ -191,7 +192,7 @@ class CastDataClass:
             # instance method, raise an exception to avoid any potential confusion as to which of them was executed.
             if all(
                 [
-                    self._get_field_class_method(annotated_attribute),
+                    self._get_field_class_method(annotated_attribute, INSTANCE_METHODS),
                     self._get_field_map_function(annotated_attribute),
                 ]
             ):
@@ -202,7 +203,7 @@ class CastDataClass:
 
             # Look for a field instance method first.
             if instance_method_tuple := self._get_field_class_method(
-                annotated_attribute
+                annotated_attribute, INSTANCE_METHODS
             ):
                 instance_method_name, instance_method = instance_method_tuple
                 logger.debug(
@@ -218,7 +219,7 @@ class CastDataClass:
                 annotated_attribute
             ):
                 logger.debug(
-                    f"found cast map callable {field_map_function} to be used on {annotated_attribute}"
+                    f"found cast map callable {field_map_function.__name__} to be used on {annotated_attribute}"
                 )
                 new_class_attributes[annotated_attribute] = field_map_function(
                     attribute_value
@@ -229,7 +230,7 @@ class CastDataClass:
             # type annotation instead in __type_cast_functions__.
             elif type_map_function := self._get_type_map_function(annotation):
                 logger.debug(
-                    f"found type map function {type_map_function} to be used on {annotated_attribute} with type {annotation}"
+                    f"found type map function {type_map_function.__name__} to be used on {annotated_attribute} with type {annotation}"
                 )
                 new_class_attributes[annotated_attribute] = type_map_function(
                     attribute_value
