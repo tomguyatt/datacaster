@@ -10,7 +10,7 @@ TEST_DEPENDENCIES = [
 setup(
     name="datacaster",
     description="Cast class attributes on instantiation.",
-    version="0.5.2",
+    version="0.6.0",
     author="Tom Guyatt",
     maintainer="Tom Guyatt",
     author_email="tomguyatt@gmail.com",
