@@ -21,23 +21,23 @@ class CastDataClass:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._attribute_string})"
 
-    def _test_cast_function_maps(self):
+    def _test_cast_function_maps(self, field_functions, type_functions):
         invalid_type_cast = {
             annotation: function
-            for annotation, function in getattr(self, "__type_cast_functions__", {}).items()
+            for annotation, function in type_functions.items()
             if len(inspect.signature(function).parameters) != 1
         }
         invalid_field_cast = {
             field: function
-            for field, function in getattr(self, "__field_cast_functions__", {}).items()
+            for field, function in field_functions.items()
             if len(inspect.signature(function).parameters) != 1
         }
 
         if all_invalid := {**invalid_type_cast, **invalid_field_cast}:
             invalid_keys = ", ".join((str(v) for v in all_invalid.keys()))
             raise exceptions.UnsupportedCast(
-                "Functions in __type_cast_functions__ and __field_cast_functions__ must take 1 parameter. "
-                f"The functions supplied with the following fields/annotations do not: {invalid_keys}"
+                "All functions in __class_config__ must take 1 parameter. The functions supplied with the following "
+                f"fields/annotations do not: {invalid_keys}"
             )
 
     def _get_field_class_method(self, field_name, instance_methods):
@@ -115,16 +115,27 @@ class CastDataClass:
         }
 
     def __init__(self, *_, **kwargs):
+
+        def _get_config_item(func, default_value):
+            try:
+                return func()
+            except (KeyError, AttributeError):
+                return default_value
+
         # The self attributes for these two are read only.
         SET_MISSING_NONE = getattr(self, "SET_MISSING_NONE", True)
         IGNORE_EXTRA = getattr(self, "IGNORE_EXTRA", True)
         INSTANCE_METHODS = inspect.getmembers(self, predicate=inspect.ismethod)
 
+        FIELD_FUNCTIONS = _get_config_item(lambda: self.__class_config__["cast_functions"]["fields"], {})
+        TYPE_FUNCTIONS = _get_config_item(lambda: self.__class_config__["cast_functions"]["types"], {})
+        ALWAYS_CAST = _get_config_item(lambda: self.__class_config__["always_cast"], [])
+
         # Type check the default values of any attributes that will be using
         # default values. We want to do this as soon as possible.
         defaulted_attributes = self._get_defaulted_attributes(kwargs)
         self._type_check_defaulted_values(defaulted_attributes)
-        self._test_cast_function_maps()
+        self._test_cast_function_maps(FIELD_FUNCTIONS, TYPE_FUNCTIONS)
 
         # Start the new attribute dictionary with all arguments using their default value.
         new_class_attributes = defaulted_attributes
@@ -157,37 +168,35 @@ class CastDataClass:
                         new_class_attributes[annotated_attribute] = None
                         continue
 
-            # If the supplied attribute value passes type-checking, chuck it into the
-            # new dictionary of class attributes and continue to the next one.
-            try:
-                check_type(annotated_attribute, attribute_value, annotation)
-                new_class_attributes[annotated_attribute] = attribute_value
 
-                ###############################
-                # Type-checking has succeeded #
-                ###############################
-                continue
+            if annotated_attribute not in ALWAYS_CAST:
+                try:
+                    check_type(annotated_attribute, attribute_value, annotation)
+                    new_class_attributes[annotated_attribute] = attribute_value
+                    ###############################
+                    # Type-checking has succeeded #
+                    ###############################
+                    continue
 
-            except TypeError:
-                logger.debug(
-                    f"attribute {annotated_attribute} is not of the correct type, casting will be attempted"
-                )
+                except TypeError:
+                    ############################
+                    # Type-checking has failed #
+                    ############################
+                    logger.debug(
+                        f"attribute {annotated_attribute} is not of the correct type, casting will be attempted"
+                    )
 
-            ############################
-            # Type-checking has failed #
-            ############################
-
-            # If a cast function exists for this field in both the __field_cast_functions__ dictionary and as a class
-            # instance method, raise an exception to avoid any potential confusion as to which of them was executed.
+            # If a cast function exists for this field in both the fields dictionary and as a class instance
+            # method, raise an exception to avoid any potential confusion as to which of them was executed.
             if all(
                 [
                     self._get_field_class_method(annotated_attribute, INSTANCE_METHODS),
-                    getattr(self, "__field_cast_functions__", {}).get(annotated_attribute)
+                    FIELD_FUNCTIONS.get(annotated_attribute),
                 ]
             ):
                 raise exceptions.MultipleCastDefinitions(
-                    f"Multiple cast definitions for field '{annotated_attribute}'. Found corresponding value in "
-                    f"__cast_map__ and class instance method __cast_{annotated_attribute}__."
+                    f"Multiple cast definitions for field '{annotated_attribute}'. Found corresponding function in "
+                    f"class config, and class instance method __cast_{annotated_attribute}__."
                 )
 
             # Look for a field instance method first.
@@ -203,21 +212,21 @@ class CastDataClass:
                 )
                 continue
 
-            # Otherwise look for a field cast function in __field_cast_functions__.
-            elif field_map_function := getattr(self, "__field_cast_functions__", {}).get(annotated_attribute):
+            # Otherwise look for a field cast function in __class_config__.
+            elif field_map_function := FIELD_FUNCTIONS.get(annotated_attribute):
                 logger.debug(
-                    f"found cast map callable {field_map_function.__name__} to be used on {annotated_attribute}"
+                    f"class config contains function {field_map_function.__name__} to be used on {annotated_attribute}"
                 )
                 new_class_attributes[annotated_attribute] = field_map_function(
                     attribute_value
                 )
                 continue
 
-            # If nothing is defined specifically for this field, see if there's a cast function defined for the
-            # type annotation instead in __type_cast_functions__.
-            elif type_map_function := getattr(self, "__type_cast_functions__", {}).get(annotation):
+            # Or a type cast function in __class_config__.
+            elif type_map_function := TYPE_FUNCTIONS.get(annotation):
                 logger.debug(
-                    f"found type map function {type_map_function.__name__} to be used on {annotated_attribute} with type {annotation}"
+                    f"class config contains function {type_map_function.__name__} to be used on {annotated_attribute} "
+                    f"with type {annotation}"
                 )
                 new_class_attributes[annotated_attribute] = type_map_function(
                     attribute_value
