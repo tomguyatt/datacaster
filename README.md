@@ -120,7 +120,7 @@ If you used a normal dataclass like this...
 
 ```python
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 
 @dataclass
