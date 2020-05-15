@@ -78,7 +78,7 @@ A hypothetical API delivers data in 3 problematic ways:
 - The `groups` field is:
  
     - A string if the user is in 1 group
-    - A list if they are in 0 or > 1
+    - A list if they are in > 1 groups
     - Non-existent if they are not in any
 
 #### Creating the class
