@@ -92,9 +92,6 @@ class CastDataClass:
     def _type_check_defaulted_values(self, defaulted_attributes):
         for attribute_name, attribute_value in defaulted_attributes.items():
             annotation = self.__annotations__[attribute_name]
-            logger.debug(
-                f"type-checking default value {attribute_value} for attribute {attribute_name}"
-            )
             try:
                 check_type(attribute_name, attribute_value, annotation)
             except TypeError:
@@ -204,9 +201,6 @@ class CastDataClass:
                 annotated_attribute, INSTANCE_METHODS
             ):
                 instance_method_name, instance_method = instance_method_tuple
-                logger.debug(
-                    f"found instance method {instance_method_name} to be used on {annotated_attribute}"
-                )
                 new_class_attributes[annotated_attribute] = instance_method(
                     attribute_value
                 )
@@ -214,9 +208,6 @@ class CastDataClass:
 
             # Otherwise look for a field cast function in __class_config__.
             elif field_map_function := FIELD_FUNCTIONS.get(annotated_attribute):
-                logger.debug(
-                    f"class config contains function {field_map_function.__name__} to be used on {annotated_attribute}"
-                )
                 new_class_attributes[annotated_attribute] = field_map_function(
                     attribute_value
                 )
@@ -224,13 +215,7 @@ class CastDataClass:
 
             # Or a type cast function in __class_config__.
             elif type_map_function := TYPE_FUNCTIONS.get(annotation):
-                logger.debug(
-                    f"class config contains function {type_map_function.__name__} to be used on {annotated_attribute} "
-                    f"with type {annotation}"
-                )
-                new_class_attributes[annotated_attribute] = type_map_function(
-                    attribute_value
-                )
+                new_class_attributes[annotated_attribute] = type_map_function(attribute_value)
                 continue
 
             # This can be called from multiple code paths, so define it once inside the scope that contains the
@@ -238,7 +223,7 @@ class CastDataClass:
             def _cast_simple(valid_type):
                 try:
                     logger.debug(
-                        f"casting argument {annotated_attribute} to {valid_type}"
+                        f"casting argument {annotated_attribute} to simple type {valid_type}"
                     )
                     return value_cast.cast_simple_type(
                         valid_type, attribute_value, annotated_attribute
@@ -251,9 +236,6 @@ class CastDataClass:
                     )
 
             if annotation_tools.is_custom_type(annotation):
-                logger.debug(
-                    f"argument {annotated_attribute} is custom type {annotation}"
-                )
                 # We can support making lists or tuples of simple builtin types. Work out whether this value should
                 # be a list or tuple. If it should be, then check if the supplied value is already a list or tuple.
                 if annotation_tools.is_collection(annotation):
