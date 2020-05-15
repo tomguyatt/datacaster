@@ -69,7 +69,7 @@ This is a very basic example showing some features of datacaster.
 
 #### Identifying the Need
 
-A hypothetical API delivers data in 2 problematic ways:
+A hypothetical API delivers data in 3 problematic ways:
 
 - The `age` field is always sent as a string
 
