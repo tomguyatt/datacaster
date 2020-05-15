@@ -175,13 +175,11 @@ class CastDataClass:
                     ###############################
                     continue
 
-                except TypeError:
+                except TypeError as e:
                     ############################
                     # Type-checking has failed #
                     ############################
-                    logger.debug(
-                        f"attribute {annotated_attribute} is not of the correct type, casting will be attempted"
-                    )
+                    logger.debug(f"type-check failed: {e}")
 
             # If a cast function exists for this field in both the fields dictionary and as a class instance
             # method, raise an exception to avoid any potential confusion as to which of them was executed.
