@@ -3,99 +3,140 @@
 
 # datacaster
 
-Runtime type-checking & attribute casting during class instance creation. Uses the excellent `typeguard` project (https://github.com/agronholm/typeguard).
+Runtime type-checking & attribute processing during class instance creation.
+
+Uses the excellent `typeguard` project (https://github.com/agronholm/typeguard).
 
 ## Why
 
-#### 1) Single point of config
+### Working with APIs
 
-Having written integrations for multiple third-party APIs and applications, I wanted an easy way to describe the following about each 'endpoint' object I was interested in:
+An integration between your own code & a third-party API is a data boundary.
 
-- Record name
-- Record fields
-- Field types
+They can be grey areas where you try to enforce some measure of sanity before the data enters your own code base.
 
-#### 2) Ignoring superfluous data
+I've experienced a few pain points while writing integrations for multiple third-party APIs & applications:
 
-Sometimes APIs give you way more information than you care about. I was keen to avoid writing comprehensions that iterate over a JSON response, and only pass fields to a constructor if the field name is in our field list.
+#### Data Types
 
-#### 3) Incomplete data/inconsistent APIs
+Values in API responses can be the wrong type. You may also need to perform extra processing on certain values.
 
-On the other hand - sometimes an API will not return a full object, depending on which operation you're performing (looking at you, Office365 Graph API). Again I wanted to avoid comprehensions that use `.get()` every time when passing fields to the constructor. It's a repeated pattern in the work I've been doing and basically boilerplate.
+Active Directory is a good example. Some attributes need extra processing to be useful, like:
+ 
+ - _objectSid_
+ - _objectGUID_
+ - _pwdLastSet_
+ - _logonHours_
 
-#### 4) Run time type-checking
+Datacaster allows you to define functions to pass values through before the new object is instantiated.
 
-Always useful.
+You can write functions for certain types _or_ specific fields.
 
-#### 5) Custom casting for special attributes
+#### Superfluous Values
 
-I wanted a simple way to define functions that mutate/cast special attributes on instantiation. The `ObjectGUID` attribute in Active Directory, for example.
+More often than not you only care about a subset of the fields you get back from an API endpoint.
 
-## What
+If the API doesn't support server-side filtering, you have to do it client-side.
 
-Any class that inherits from `datacaster.classes.CastDataClass` **must**:
+Datacaster classes will ignore the fields you don't care about by default (this can be overridden).
 
-- Use the same annotations syntax you'd use in a dataclass.
-- **Not** have an `__init__` defined.
+#### Incomplete/Inconsistent API Data
 
-During instance creation, the `CastDataClass.__init__` will:
+Once you've defined what each endpoint object looks like, it doesn't mean you'll always receive every value from the API itself.
 
-1) Type-check the default values of any attributes that will **fall back to their default value**.
-2) Unless the class annotation contains `IGNORE_EXTRA=False`, any extra attributes supplied to the constructor will be ignored.
-3) Unless the class annotation contains `SET_MISSING_NONE=False`, any missing attributes will be set to None, regardless of their annotation.
-4) Type-check all attributes passed to the constructor. If any attribute fails the type-check, the following will happen:
+I've found Office365 Graph API will return inconsistent user fields depending on which API call you use.
 
-    - **If** an instance method exists for the attribute (`__cast__[attribute_name]__`), the value will be passed into that function, and the return value will be used in the class instance.
-    
-    - **Else** if the value is a value we can cast automatically, this will be attempted.
+If a field may/may not be missing from the response, you have to use `.get()` (or something to that effect) to handle missing values.
 
-## Examples
+Datacaster sets missing fields to `None` by default (this can be overridden).
 
-A class that describes an Active Directory user. For simplicity a lot of 'useful' fields have been left out of the example.
+#### Run time type-checking
+
+Supplied fields & values are type-checked at runtime thanks to `typeguard.check_type`.
+
+The result of this check determines whether a field's value should be processed or not.
+
+However, if you ___always___ want to process certain fields, this is also supported by datacaster.
+
+Default field values are also type-checked.
+
+
+## Using Datacaster
+
+### Basic Example
+
+This is a very basic example showing some features of datacaster.
+
+#### Identifying the Need
+
+A hypothetical API delivers data in 3 problematic ways:
+
+- The `age` field is always sent as a string
+
+- The `email_address` field is not mandatory & may not exist
+
+- The `groups` field is:
+ 
+    - A string if the user is in 1 group
+    - A list if they are in > 1 groups
+    - Non-existent if they are not in any
+
+#### Creating the class
+
+- A simple `User` class is defined with 5 fields, inheriting from `datacaster.classes.CastDataClass`
+
+- A new `user` object is created using the response from this hypothetical API
 
 ```python
 from typing import Optional, List
 
 from datacaster.classes import CastDataClass
 
-
 class User(CastDataClass):
-    adminCount: Optional[int]
-    badPwdCount: Optional[int]
-    carLicense: List[str]
-    cn: Optional[str]
-    countryCode: Optional[str]
-    displayName: Optional[str]
-    distinguishedName: str
-    givenName: Optional[str]
-    info: Optional[str]
-    lastLogoff: Optional[str]
-    logonCount: Optional[int]
-    mail: Optional[str]
-    manager: Optional[str]
-    memberOf: List[str]
-    name: Optional[str]
-    objectCategory: str
-    objectClass: List[str]
-    objectGUID: str
-    objectSid: str
-    primaryGroupID: int
-    sAMAccountName: str
-    sAMAccountType: Optional[int]
-    sn: Optional[str]
-    userAccountControl: int
-    userPrincipalName: str
-    
-    def __cast_objectGUID__(self, value):
-        # This will be called when the __init__ is inspecting the objectGUID
-        # attribute. Here you can operate on the value passed to the constructor
-        # and return whatever you need.
-        return value
-    
-    def __cast_objectSid__(self, value):
-        # As above, this will be called when the __init__ is inspecting the objectSid
-        # attribute. Here you can operate on the value passed to the constructor and
-        # return whatever you need.
-        return value
+    first_name: str
+    surname: str
+    age: int
+    email_address: Optional[str]
+    groups: List[str]
 
+user = User(**{"first_name": "duck", "surname": "adams", "age": "40", "groups": "sales"})
 ```
+
+#### The Created Class Instance
+
+- Datacaster casts the `age` to an `int` automatically
+
+- The email address is missing so it is set to None
+
+- The string `groups` field is cast to a list automatically
+
+```python
+User(first_name='duck', surname='adams', age=40, email_address=None, groups=['sales'])
+```
+
+#### Why not a Dataclass?
+
+If you used a normal dataclass like this...
+
+```python
+from dataclasses import dataclass
+from typing import Optional, List
+
+
+@dataclass
+class User:
+    first_name: str
+    surname: str
+    age: int
+    email_address: Optional[str]
+    groups: List[str]
+```
+
+...you'd get:
+ 
+ - a __TypeError__ if `email_address` or `groups` weren't supplied
+ - both the `age` & `groups` fields would still be strings if supplied
+
+You could make `email_address` & `groups` default to `None`, but that can get frustrating and doesn't scale very well.
+ 
+When dealing with inconsistent APIs you'd have to know which fields may not exist.
