@@ -137,6 +137,6 @@ class User:
  - a __TypeError__ if `email_address` or `groups` weren't supplied
  - both the `age` & `groups` fields would still be strings if supplied
 
-You could make `email_address` default to `None`, but that can get frustrating.
+You could make `email_address` & `groups` default to `None`, but that can get frustrating and doesn't scale very well.
  
 When dealing with inconsistent APIs you'd have to know which fields may not exist.
