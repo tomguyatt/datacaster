@@ -39,8 +39,9 @@ def get_custom_type_classes(annotation) -> tuple:
     def _get_annotation_args():
         valid_types = annotation.__args__
         logger.debug(
-            f"valid types for annotation {annotation} are {annotation.__args__}"
+            f'valid types for annotation f"valid types for annotation {annotation} are {annotation.__args__}" are {valid_types}'
         )
+
         return valid_types
 
     if is_collection(annotation):
