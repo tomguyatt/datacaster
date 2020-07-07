@@ -112,7 +112,6 @@ class CastDataClass:
         }
 
     def __init__(self, *_, **kwargs):
-
         def _get_config_item(func, default_value):
             try:
                 return func()
@@ -124,12 +123,18 @@ class CastDataClass:
         IGNORE_EXTRA = getattr(self, "IGNORE_EXTRA", True)
         INSTANCE_METHODS = inspect.getmembers(self, predicate=inspect.ismethod)
 
-        FIELD_FUNCTIONS = _get_config_item(lambda: self.__class_config__["cast_functions"]["fields"], {})
-        TYPE_FUNCTIONS = _get_config_item(lambda: self.__class_config__["cast_functions"]["types"], {})
+        FIELD_FUNCTIONS = _get_config_item(
+            lambda: self.__class_config__["cast_functions"]["fields"], {}
+        )
+        TYPE_FUNCTIONS = _get_config_item(
+            lambda: self.__class_config__["cast_functions"]["types"], {}
+        )
         ALWAYS_CAST = _get_config_item(lambda: self.__class_config__["always_cast"], [])
 
         # If any fields are to be renamed, do it now before kwargs are inspected.
-        if RENAMED_FIELDS := _get_config_item(lambda: self.__class_config__["rename_fields"], []):
+        if RENAMED_FIELDS := _get_config_item(
+            lambda: self.__class_config__["rename_fields"], []
+        ):
             for original_name, new_name in RENAMED_FIELDS.items():
                 if value := kwargs.get(original_name):
                     kwargs[new_name] = value
@@ -171,7 +176,6 @@ class CastDataClass:
                     else:
                         new_class_attributes[annotated_attribute] = None
                         continue
-
 
             if annotated_attribute not in ALWAYS_CAST:
                 try:
@@ -220,7 +224,9 @@ class CastDataClass:
 
             # Or a type cast function in __class_config__.
             elif type_map_function := TYPE_FUNCTIONS.get(annotation):
-                new_class_attributes[annotated_attribute] = type_map_function(attribute_value)
+                new_class_attributes[annotated_attribute] = type_map_function(
+                    attribute_value
+                )
                 continue
 
             # This can be called from multiple code paths, so define it once inside the scope that contains the
