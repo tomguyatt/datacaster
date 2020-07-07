@@ -281,6 +281,7 @@ def test_repr():
 
 
 def test_eq():
+
     class TypeMap(CastDataClass):
         __class_config__ = {
             "cast_functions": {
@@ -291,10 +292,10 @@ def test_eq():
 
     constructor = {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"}
     assert SimpleDataClass(**constructor) == SimpleDataClass(**constructor)
-    assert not SimpleDataClass(**constructor) == SimpleDataClass(
+    assert SimpleDataClass(**constructor) != SimpleDataClass(
         **{key: value for key, value in constructor.items() if key != "string"}
     )
-    assert not SimpleDataClass(**constructor) == TypeMap(list_of_strings=[1, 2, 3])
+    assert SimpleDataClass(**constructor) != TypeMap(list_of_strings=[1, 2, 3])
 
 
 def test_class_config_defaults():
@@ -314,3 +315,18 @@ def test_cast_always():
         name: str
 
     assert AlwaysCastString(name="lol").__dict__ == {"name": "lol lol!"}
+
+
+def test_rename_fields():
+    class Renamed(CastDataClass):
+        new_name_1: str
+        new_name_2: int
+
+        __class_config__ = {
+            "rename_fields": {
+                "OriginalNameOne": "new_name_1",
+                "OriginalNameTwo": "new_name_2",
+            }
+        }
+
+    assert Renamed(OriginalNameOne="test value", OriginalNameTwo="1").__dict__ == {"new_name_1": "test value", "new_name_2": 1}
