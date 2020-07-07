@@ -128,6 +128,14 @@ class CastDataClass:
         TYPE_FUNCTIONS = _get_config_item(lambda: self.__class_config__["cast_functions"]["types"], {})
         ALWAYS_CAST = _get_config_item(lambda: self.__class_config__["always_cast"], [])
 
+        # If any fields are to be renamed, do it now before kwargs are inspected.
+        if RENAMED_FIELDS := _get_config_item(lambda: self.__class_config__["rename_fields"], []):
+            for original_name, new_name in RENAMED_FIELDS.items():
+                # Create a new kwargs item with the new name & original value.
+                kwargs[new_name] = kwargs[original_name]
+                # Chuck the old kwargs item away.
+                _ = kwargs.pop(original_name, None)
+
         # Type check the default values of any attributes that will be using
         # default values. We want to do this as soon as possible.
         defaulted_attributes = self._get_defaulted_attributes(kwargs)
