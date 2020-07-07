@@ -321,12 +321,13 @@ def test_rename_fields():
     class Renamed(CastDataClass):
         new_name_1: str
         new_name_2: int
+        missing_new_name: str
 
         __class_config__ = {
             "rename_fields": {
                 "OriginalNameOne": "new_name_1",
                 "OriginalNameTwo": "new_name_2",
+                "OriginalMissingName": "missing_new_name",
             }
         }
-
-    assert Renamed(OriginalNameOne="test value", OriginalNameTwo="1").__dict__ == {"new_name_1": "test value", "new_name_2": 1}
+    assert Renamed(OriginalNameOne="test value", OriginalNameTwo="1").__dict__ == {"new_name_1": "test value", "new_name_2": 1, "missing_new_name": None}

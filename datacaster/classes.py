@@ -131,9 +131,8 @@ class CastDataClass:
         # If any fields are to be renamed, do it now before kwargs are inspected.
         if RENAMED_FIELDS := _get_config_item(lambda: self.__class_config__["rename_fields"], []):
             for original_name, new_name in RENAMED_FIELDS.items():
-                # Create a new kwargs item with the new name & original value.
-                kwargs[new_name] = kwargs[original_name]
-                # Chuck the old kwargs item away.
+                if value := kwargs.get(original_name):
+                    kwargs[new_name] = value
                 _ = kwargs.pop(original_name, None)
 
         # Type check the default values of any attributes that will be using
