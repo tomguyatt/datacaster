@@ -306,6 +306,18 @@ def test_class_config_defaults():
     assert TestDefaults(name=100, age="100").__dict__ == {"name": "100", "age": 100}
 
 
+def test_not_supplied_default_values():
+    class TestNotSuppliedDefaultValues(CastDataClass):
+        missing_list: list = []
+        missing_string: str = "Hello!"
+        missing_int: int = 123
+        present_bool: bool = False
+
+    assert TestNotSuppliedDefaultValues(present_bool=True).__dict__ == {
+        "missing_list": [], "missing_string": "Hello!", "missing_int": 123, "present_bool": True
+    }
+
+
 def test_cast_always():
     class AlwaysCastString(CastDataClass):
         __class_config__ = {

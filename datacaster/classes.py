@@ -1,5 +1,6 @@
 import inspect
 import logging
+import copy
 
 from typeguard import check_type
 
@@ -147,7 +148,7 @@ class CastDataClass:
         self._test_cast_function_maps(FIELD_FUNCTIONS, TYPE_FUNCTIONS)
 
         # Start the new attribute dictionary with all arguments using their default value.
-        new_class_attributes = defaulted_attributes
+        new_class_attributes = copy.deepcopy(defaulted_attributes)
 
         # Find any attributes in kwargs that aren't annotated. Their
         # existence can either be ignored or trigger an exception.
@@ -160,22 +161,26 @@ class CastDataClass:
 
         # Start the main attribute testing & casting loop.
         for annotated_attribute, annotation in self.__annotations__.items():
-
+            attribute_value = None  # Prevent 'might be referenced before assignment' further down.
             annotation = annotation_tools.parse_annotation(annotation)
             try:
                 attribute_value = kwargs[annotated_attribute]
             except KeyError:
-                attribute_value = None
-                if annotated_attribute not in defaulted_attributes:
-                    # The attribute has not been supplied and is not in kwargs. This can
-                    # either be ignored or trigger an exception.
-                    if not SET_MISSING_NONE:
-                        raise exceptions.MissingArgument(
-                            f"No value supplied for mandatory keyword argument {annotated_attribute}"
-                        )
-                    else:
-                        new_class_attributes[annotated_attribute] = None
-                        continue
+
+                if annotated_attribute in defaulted_attributes:
+                    # The attribute has not been supplied but has a default value.
+                    default_value = defaulted_attributes[annotated_attribute]
+                    logger.debug(f"attribute {annotated_attribute} will fall back to its default value {repr(default_value)}")
+                    new_class_attributes[annotated_attribute] = default_value
+                    continue
+
+                # The attribute has not been supplied and does not have a default value.
+                if SET_MISSING_NONE:
+                    new_class_attributes[annotated_attribute] = None
+                    continue
+                raise exceptions.MissingArgument(
+                    f"No value supplied for mandatory keyword argument {annotated_attribute}"
+                )
 
             if annotated_attribute not in ALWAYS_CAST:
                 try:
