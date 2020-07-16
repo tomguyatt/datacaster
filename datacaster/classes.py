@@ -149,8 +149,6 @@ class CastDataClass:
         defaulted_attributes = self._get_defaulted_attributes(kwargs)
         self._type_check_defaulted_values(defaulted_attributes)
         self._test_cast_function_maps(FIELD_FUNCTIONS, TYPE_FUNCTIONS)
-        logger.debug(f"{kwargs=}")
-        logger.debug(f"{defaulted_attributes=}")
 
         # Start the new attribute dictionary with all arguments using their default value.
         new_class_attributes = copy.deepcopy(defaulted_attributes)
