@@ -20,7 +20,13 @@ class SimpleDataClass(CastDataClass):
     "constructor, expected_dict",
     [
         [
-            {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"},
+            {
+                "string": 123,
+                "integer": "123",
+                "floating": "1.0",
+                "list_string": ["1", "2", "3"],
+                "tuple_int": "1",
+            },
             {
                 "string": "123",
                 "integer": 123,
@@ -31,7 +37,13 @@ class SimpleDataClass(CastDataClass):
             },
         ],
         [
-            {"string": 1.0, "integer": 123.0, "floating": 1, "list_string": [1, 2, 3], "tuple_int": 1.0},
+            {
+                "string": 1.0,
+                "integer": 123.0,
+                "floating": 1,
+                "list_string": [1, 2, 3],
+                "tuple_int": 1.0,
+            },
             {
                 "string": "1.0",
                 "integer": 123,
@@ -117,7 +129,9 @@ class SimpleDataClass(CastDataClass):
 )
 def test_cast_attributes_simple(constructor, expected_dict):
     instance = SimpleDataClass(**constructor)
-    assert vars(instance) == expected_dict, f"Instance {instance} has different attributes to {expected_dict}"
+    assert (
+        vars(instance) == expected_dict
+    ), f"Instance {instance} has different attributes to {expected_dict}"
 
 
 def test_cast_attributes_unsupported():
@@ -144,7 +158,13 @@ def test_invalid_default_value():
 
 def test_ignore_extra():
     assert vars(
-        SimpleDataClass(string="123", integer=123, floating=1.0, optional_string="hello", extra_to_ignore="hello")
+        SimpleDataClass(
+            string="123",
+            integer=123,
+            floating=1.0,
+            optional_string="hello",
+            extra_to_ignore="hello",
+        )
     ) == {
         "string": "123",
         "integer": 123,
@@ -178,7 +198,10 @@ def test_missing_and_extra():
         integer: int
         string: str
 
-    assert vars(AllowMissingAndExtra(extra="hello")) == {"integer": None, "string": None}
+    assert vars(AllowMissingAndExtra(extra="hello")) == {
+        "integer": None,
+        "string": None,
+    }
     with pytest.raises(exceptions.UnexpectedArgument):
         DisallowMissingAndExtra(extra="hello")
     with pytest.raises(exceptions.MissingArgument):
@@ -201,7 +224,9 @@ def test_field_instance_method():
         def __cast_list_of_strings__(self, value):
             return [str(i) for i in value]
 
-    assert vars(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+    assert vars(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
 
 
 def test_field_map_function():
@@ -213,19 +238,21 @@ def test_field_map_function():
         }
         list_of_strings: str
 
-    assert vars(FieldMap(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+    assert vars(FieldMap(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
 
 
 def test_type_map_function():
     class TypeMap(CastDataClass):
         __class_config__ = {
-            "cast_functions": {
-                "types": {List[str]: lambda x: [str(i) for i in x]}
-            }
+            "cast_functions": {"types": {List[str]: lambda x: [str(i) for i in x]}}
         }
         list_of_strings: List[str]
 
-    assert vars(TypeMap(list_of_strings=[1, 2, 3])) == {"list_of_strings": ["1", "2", "3"]}
+    assert vars(TypeMap(list_of_strings=[1, 2, 3])) == {
+        "list_of_strings": ["1", "2", "3"]
+    }
 
 
 def test_duplicate_casters():
@@ -276,21 +303,25 @@ def test_repr():
             return [str(i) for i in value]
 
     assert (
-        repr(FieldInstanceMethod(list_of_strings=[1, 2, 3])) == "FieldInstanceMethod(list_of_strings=['1', '2', '3'])"
+        repr(FieldInstanceMethod(list_of_strings=[1, 2, 3]))
+        == "FieldInstanceMethod(list_of_strings=['1', '2', '3'])"
     )
 
 
 def test_eq():
-
     class TypeMap(CastDataClass):
         __class_config__ = {
-            "cast_functions": {
-                "types": {List[str]: lambda x: [str(i) for i in x]}
-            }
+            "cast_functions": {"types": {List[str]: lambda x: [str(i) for i in x]}}
         }
         list_of_strings: List[str]
 
-    constructor = {"string": 123, "integer": "123", "floating": "1.0", "list_string": ["1", "2", "3"], "tuple_int": "1"}
+    constructor = {
+        "string": 123,
+        "integer": "123",
+        "floating": "1.0",
+        "list_string": ["1", "2", "3"],
+        "tuple_int": "1",
+    }
     assert SimpleDataClass(**constructor) == SimpleDataClass(**constructor)
     assert SimpleDataClass(**constructor) != SimpleDataClass(
         **{key: value for key, value in constructor.items() if key != "string"}
@@ -314,7 +345,10 @@ def test_not_supplied_default_values():
         present_bool: bool = False
 
     assert TestNotSuppliedDefaultValues(present_bool=True).__dict__ == {
-        "missing_list": [], "missing_string": "Hello!", "missing_int": 123, "present_bool": True
+        "missing_list": [],
+        "missing_string": "Hello!",
+        "missing_int": 123,
+        "present_bool": True,
     }
 
 
@@ -322,7 +356,7 @@ def test_cast_always():
     class AlwaysCastString(CastDataClass):
         __class_config__ = {
             "cast_functions": {"fields": {"name": lambda x: f"{x} lol!"}},
-            "always_cast": ["name"]
+            "always_cast": ["name"],
         }
         name: str
 
@@ -333,13 +367,30 @@ def test_rename_fields():
     class Renamed(CastDataClass):
         new_name_1: str
         new_name_2: int
-        missing_new_name: str
+        new_bool: bool = False
+        missing_new_name: str = "Hello!"
 
         __class_config__ = {
             "rename_fields": {
                 "OriginalNameOne": "new_name_1",
                 "OriginalNameTwo": "new_name_2",
                 "OriginalMissingName": "missing_new_name",
+                "OriginalBool": "new_bool",
             }
         }
-    assert Renamed(OriginalNameOne="test value", OriginalNameTwo="1").__dict__ == {"new_name_1": "test value", "new_name_2": 1, "missing_new_name": None}
+
+    assert Renamed(
+        OriginalNameOne="test value", OriginalNameTwo="1", OriginalBool=True
+    ).__dict__ == {
+        "new_name_1": "test value",
+        "new_name_2": 1,
+        "missing_new_name": "Hello!",
+        "new_bool": True,
+    }
+
+    assert Renamed(OriginalNameOne="test value", OriginalNameTwo="1",).__dict__ == {
+        "new_name_1": "test value",
+        "new_name_2": 1,
+        "missing_new_name": "Hello!",
+        "new_bool": False,
+    }

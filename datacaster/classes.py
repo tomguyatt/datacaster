@@ -137,8 +137,11 @@ class CastDataClass:
             lambda: self.__class_config__["rename_fields"], []
         ):
             for original_name, new_name in RENAMED_FIELDS.items():
-                if value := kwargs.get(original_name):
-                    kwargs[new_name] = value
+                try:
+                    kwargs[new_name] = kwargs[original_name]
+                except KeyError:
+                    # Field is missing from kwargs - carry on.
+                    pass
                 _ = kwargs.pop(original_name, None)
 
         # Type check the default values of any attributes that will be using
@@ -161,7 +164,9 @@ class CastDataClass:
 
         # Start the main attribute testing & casting loop.
         for annotated_attribute, annotation in self.__annotations__.items():
-            attribute_value = None  # Prevent 'might be referenced before assignment' further down.
+            attribute_value = (
+                None  # Prevent 'might be referenced before assignment' further down.
+            )
             annotation = annotation_tools.parse_annotation(annotation)
             try:
                 attribute_value = kwargs[annotated_attribute]
@@ -170,12 +175,17 @@ class CastDataClass:
                 if annotated_attribute in defaulted_attributes:
                     # The attribute has not been supplied but has a default value.
                     default_value = defaulted_attributes[annotated_attribute]
-                    logger.debug(f"attribute {annotated_attribute} will fall back to its default value {repr(default_value)}")
+                    logger.debug(
+                        f"attribute {annotated_attribute} will fall back to its default value {repr(default_value)}"
+                    )
                     new_class_attributes[annotated_attribute] = default_value
                     continue
 
                 # The attribute has not been supplied and does not have a default value.
                 if SET_MISSING_NONE:
+                    logger.debug(
+                        f"attribute {annotated_attribute} is missing with no default value - setting to None"
+                    )
                     new_class_attributes[annotated_attribute] = None
                     continue
                 raise exceptions.MissingArgument(
