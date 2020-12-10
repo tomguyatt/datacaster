@@ -85,9 +85,7 @@ class CastDataClass:
         argument type annotation early on.
         """
         return {
-            name: value
-            for name, value in self._get_default_values().items()
-            if name not in kwargs
+            name: value for name, value in self._get_default_values().items() if name not in kwargs
         }
 
     def _type_check_defaulted_values(self, defaulted_attributes):
@@ -106,13 +104,9 @@ class CastDataClass:
         Return a {name: value_type} dictionary of all kwargs provided to the class
         __init__ that do not have relevant annotations.
         """
-        return {
-            name: value
-            for name, value in kwargs.items()
-            if name not in self.__annotations__
-        }
+        return {name: value for name, value in kwargs.items() if name not in self.__annotations__}
 
-    def __init__(self, *_, **kwargs):
+    def __init__(self, *_, **kwargs):  # throw away *args
         def _get_config_item(func, default_value):
             try:
                 return func()
@@ -133,9 +127,7 @@ class CastDataClass:
         ALWAYS_CAST = _get_config_item(lambda: self.__class_config__["always_cast"], [])
 
         # If any fields are to be renamed, do it now before kwargs are inspected.
-        if RENAMED_FIELDS := _get_config_item(
-            lambda: self.__class_config__["rename_fields"], []
-        ):
+        if RENAMED_FIELDS := _get_config_item(lambda: self.__class_config__["rename_fields"], []):
             for original_name, new_name in RENAMED_FIELDS.items():
                 try:
                     kwargs[new_name] = kwargs[original_name]
@@ -164,9 +156,7 @@ class CastDataClass:
 
         # Start the main attribute testing & casting loop.
         for annotated_attribute, annotation in self.__annotations__.items():
-            attribute_value = (
-                None  # Prevent 'might be referenced before assignment' further down.
-            )
+            attribute_value = None  # Prevent 'might be referenced before assignment' further down.
             annotation = annotation_tools.parse_annotation(annotation)
             try:
                 attribute_value = kwargs[annotated_attribute]
@@ -225,23 +215,17 @@ class CastDataClass:
                 annotated_attribute, INSTANCE_METHODS
             ):
                 instance_method_name, instance_method = instance_method_tuple
-                new_class_attributes[annotated_attribute] = instance_method(
-                    attribute_value
-                )
+                new_class_attributes[annotated_attribute] = instance_method(attribute_value)
                 continue
 
             # Otherwise look for a field cast function in __class_config__.
             elif field_map_function := FIELD_FUNCTIONS.get(annotated_attribute):
-                new_class_attributes[annotated_attribute] = field_map_function(
-                    attribute_value
-                )
+                new_class_attributes[annotated_attribute] = field_map_function(attribute_value)
                 continue
 
             # Or a type cast function in __class_config__.
             elif type_map_function := TYPE_FUNCTIONS.get(annotation):
-                new_class_attributes[annotated_attribute] = type_map_function(
-                    attribute_value
-                )
+                new_class_attributes[annotated_attribute] = type_map_function(attribute_value)
                 continue
 
             # This can be called from multiple code paths, so define it once inside the scope that contains the
@@ -276,16 +260,12 @@ class CastDataClass:
                         logger.debug(
                             f"casting argument {annotated_attribute} collection value {value} to {valid_type}"
                         )
-                        return value_cast.cast_simple_type(
-                            valid_type, value, annotated_attribute
-                        )
+                        return value_cast.cast_simple_type(valid_type, value, annotated_attribute)
 
                     if not isinstance(attribute_value, (list, tuple)):
                         # If the value isn't already a list or tuple, cast it if necessary then put it inside a
                         # new instance of the collection type specified in the annotation.
-                        cast_collection_values.append(
-                            _cast_collection_item(attribute_value)
-                        )
+                        cast_collection_values.append(_cast_collection_item(attribute_value))
                     else:
                         for value in attribute_value:
                             # Iterate over the supplied values and cast them if necessary.
@@ -316,3 +296,13 @@ class CastDataClass:
 
         for name, value in new_class_attributes.items():
             setattr(self, name, value)
+
+
+class CastObject(CastDataClass):
+    def __init__(self, object, inherited_properties=None):
+        super().__init__(
+            **dict(
+                object.__dict__,
+                **{prop: getattr(object, prop) for prop in inherited_properties or []},
+            )
+        )

@@ -3,7 +3,7 @@ import pytest
 
 from typing import Optional, List, Tuple, Any
 
-from datacaster.classes import CastDataClass
+from datacaster.classes import CastDataClass, CastObject
 from datacaster import exceptions
 
 
@@ -394,3 +394,31 @@ def test_rename_fields():
         "missing_new_name": "Hello!",
         "new_bool": False,
     }
+
+
+def test_inherit_properties():
+
+    class User():
+        def __init__(self, name):
+            self.name = name
+
+        @property
+        def title_case(self):
+            return self.name.title()
+
+        @property
+        def age(self):
+            return "30"
+
+    class CastUserWithProperties(CastObject):
+        name: str
+        title_case: str
+        age: int
+
+    class CastUserWithoutProperties(CastObject):
+        name: str
+
+    user = User("tom")
+    assert CastUserWithProperties(user).__dict__ == {"name": "tom", "title_case": None, "age": None}
+    assert CastUserWithProperties(user, inherited_properties=["title_case", "age"]).__dict__ == {"name": "tom", "title_case": "Tom", "age": 30}
+    assert CastUserWithoutProperties(user).__dict__ == {"name": "tom"}
